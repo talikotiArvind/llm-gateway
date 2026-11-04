@@ -10,12 +10,6 @@ Only load a full source file when you need to inspect specific logic.
 
 <!-- Entries are auto-inserted below by the hook -->
 
-<!-- BEGIN: C:/Users/ATALIK~1/AppData/Local/Temp/claude/8c63851b6bd4bcdb/b3358041-f6ae-480b-8b87-8fdecc074b49/scratchpad/apply.py -->
-## C:/Users/ATALIK~1/AppData/Local/Temp/claude/8c63851b6bd4bcdb/b3358041-f6ae-480b-8b87-8fdecc074b49/scratchpad/apply.py
-*Updated: 2026-11-05 00:27*
-
-**Purpose**: No module docstring
-<!-- END: C:/Users/ATALIK~1/AppData/Local/Temp/claude/8c63851b6bd4bcdb/b3358041-f6ae-480b-8b87-8fdecc074b49/scratchpad/apply.py -->
 
 <!-- BEGIN: src/switchyard/infrastructure/settings.py -->
 ## src/switchyard/infrastructure/settings.py
