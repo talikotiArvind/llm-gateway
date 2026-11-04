@@ -22,12 +22,12 @@ files_written_this_session: 2
 
 ## Code Quality (last `metrics` skill run)
 ruff_violations: 0
-mypy_errors: 0  (strict; src tests fake_provider, 34 files)
-annotation_coverage_pct: 100  (switchyard + fake_provider)
-avg_complexity: —
-max_complexity_function: —
-files_checked: 34
-quality_score: —
+mypy_errors: 0  (strict; src tests fake_provider, 35 files)
+annotation_coverage_pct: 99.6 (line 100%, 548 stmts; switchyard + fake_provider)
+avg_complexity: 2.35 (radon A; no function graded C or worse)
+max_complexity_function: none above B
+files_checked: 35
+quality_score: 99.7/100 (M0 gate, 2026-11-05)
 
 > Run `.claude/skills/metrics.md` after any code change to refresh these.
 
@@ -35,12 +35,12 @@ quality_score: —
 
 ## Test Quality (last pytest run)
 coverage_pct: 99.83 (line 100; switchyard + fake_provider, 501 stmts)
-total_tests: 86 (+8 subtests)
-passing_tests: 86
+total_tests: 173 (+78 subtests)
+passing_tests: 173
 failing_tests: 0
-branches_covered_pct: 98.75 (79/80)
+branches_covered_pct: 98.0 (96/98)
 uncovered_lines: 0
-last_run: 2026-11-05 (M0 review iteration 2)
+last_run: 2026-11-05 (M0 exit gate)
 
 > Run `pytest --cov=src --cov-report=json` and then the `metrics` skill to refresh.
 
@@ -55,6 +55,6 @@ avg_iterations_to_resolve: 1
 ---
 
 ## Sub-Agent Parallelism (last session)
-parallel_task_groups_run: 0
-tasks_parallelized: 0
-sequential_tasks: 0
+parallel_task_groups_run: 2 (M0-B; M0 unit tests)
+tasks_parallelized: 5 (T02, T03, T04, 2 unit-test agents)
+sequential_tasks: 3 (T01, M0 refactor, fake_provider spec fix)

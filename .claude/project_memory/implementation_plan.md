@@ -565,7 +565,7 @@ Per gate also: Code Reviewer verdict APPROVE with risk ≤ MEDIUM (HIGH → huma
 ## 5. Progress tracking
 | Milestone | Tasks | Status | Notes |
 |---|---|---|---|
-| M0 | T01, T02, T03, T04 | in progress | T01 done in worktree t01 (awaiting merge); actionlint not run (not installed); import-linter layer modules not yet created are marked optional `(…)` in pyproject ; T03 done in worktree t03 (awaiting merge order 1): pyproject `[tool.pytest.ini_options] pythonpath = ["."]` added so top-level fake_provider imports; docker build not run (Docker not installed) |
+| M0 | T01, T02, T03, T04 | gate pending user confirmation | All merged to main (T01 c251e1a, T03 5a670cf, T02 1171be2, T04 703fc1d, review fixes b3c197c, tests 323f0b0/021c8aa). Review iter 2: APPROVE, LOW (conditional on compose-smoke CI). 173 tests, line 100%, branch 98%, quality 99.7. Not runnable locally: Docker (compose up, image build), actionlint. |
 | M1 | T05, T06, T07, T08, T09 | pending | |
 | M2 | T10, T11, T12, T13 | pending | |
 | M3 | T14, T15, T16 | pending | |
