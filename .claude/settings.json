@@ -1,0 +1,66 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/session_metrics.py",
+            "statusMessage": "Loading project status...",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/guard_file_reads.py",
+            "statusMessage": "Checking code index...",
+            "timeout": 8
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/update_code_index.py",
+            "statusMessage": "Updating code index...",
+            "timeout": 15,
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/update_code_index.py",
+            "statusMessage": "Updating code index...",
+            "timeout": 15,
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/track_full_reads.py",
+            "timeout": 5,
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+name: Build external knowledge base
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+# The built-in token reads this repo's PR + diff, and calls GitHub Models
+# for the summary (models: read) -- no separate LLM API key needed.
+permissions:
+  contents: read
+  pull-requests: read
+  models: read
+
+jobs:
+  build-knowledge:
+    # Fire only on a real merge, not when a PR is closed without merging.
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Source repo — gives us scripts/build_knowledge.py
+      - name: Check out source repo
+        uses: actions/checkout@v4
+
+      # 2. Knowledge repo — where entries get written. Needs a PAT with
+      #    write access to it (secret: KNOWLEDGE_REPO_TOKEN).
+      - name: Check out knowledge repo
+        uses: actions/checkout@v4
+        with:
+          repository: talikotiArvind/project-knowledge
+          token: ${{ secrets.KNOWLEDGE_REPO_TOKEN }}
+          path: knowledge-repo
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install openai requests
+
+      - name: Generate knowledge entry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Small/cheap model for typical PRs; large model only for PRs big
+          # enough that diff truncation is unavoidable anyway (see
+          # scripts/build_knowledge.py select_model()). Both share the same
+          # 8k-token input cap on Free/Pro/Business GitHub accounts.
+          GITHUB_MODEL_SMALL: openai/gpt-4o-mini
+          GITHUB_MODEL_LARGE: openai/gpt-4o
+          LARGE_PR_FILES_THRESHOLD: "15"
+          LARGE_PR_LOC_THRESHOLD: "400"
+          SOURCE_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          KB_DIR: knowledge-repo
+        run: python scripts/build_knowledge.py
+
+      - name: Commit and push
+        working-directory: knowledge-repo
+        run: |
+          git config user.name  "knowledge-bot"
+          git config user.email "knowledge-bot@users.noreply.github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "docs: knowledge entry for PR #${{ github.event.pull_request.number }}"
+            git push
+          fi

@@ -1,0 +1,90 @@
+name: Backfill external knowledge base
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to (re)generate a single entry for. Leave blank to run the sweep below instead."
+        type: string
+        default: ""
+      regenerate_all:
+        description: "Regenerate entries for ALL merged PRs, including ones that already exist (ignored if PR number is set)"
+        type: boolean
+        default: false
+      dry_run:
+        description: "List PRs that would be processed, don't call the LLM or write files"
+        type: boolean
+        default: false
+
+# The built-in token reads this repo's PR + diff, and calls GitHub Models
+# for the summary (models: read) -- no separate LLM API key needed.
+permissions:
+  contents: read
+  pull-requests: read
+  models: read
+
+jobs:
+  backfill-knowledge:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Source repo — gives us scripts/backfill_knowledge.py
+      - name: Check out source repo
+        uses: actions/checkout@v4
+
+      # 2. Knowledge repo — where entries get written. Needs a PAT with
+      #    write access to it (secret: KNOWLEDGE_REPO_TOKEN).
+      - name: Check out knowledge repo
+        uses: actions/checkout@v4
+        with:
+          repository: talikotiArvind/project-knowledge
+          token: ${{ secrets.KNOWLEDGE_REPO_TOKEN }}
+          path: knowledge-repo
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install openai requests
+
+      - name: Backfill knowledge entries
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Small/cheap model for typical PRs; large model only for PRs big
+          # enough that diff truncation is unavoidable anyway (see
+          # scripts/backfill_knowledge.py select_model()). Both share the
+          # same 8k-token input cap on Free/Pro/Business GitHub accounts, and
+          # the large model has a much smaller daily quota (50 vs 150 req/day)
+          # -- a sweep with many large PRs can exhaust it; failures are
+          # logged and skipped rather than aborting the run.
+          GITHUB_MODEL_SMALL: openai/gpt-4o-mini
+          GITHUB_MODEL_LARGE: openai/gpt-4o
+          LARGE_PR_FILES_THRESHOLD: "15"
+          LARGE_PR_LOC_THRESHOLD: "400"
+          SOURCE_REPO: ${{ github.repository }}
+          KB_DIR: knowledge-repo
+        run: |
+          python scripts/backfill_knowledge.py \
+            ${{ inputs.pr_number != '' && format('--pr {0}', inputs.pr_number) || '' }} \
+            ${{ inputs.regenerate_all && '--force' || '' }} \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Commit and push
+        if: ${{ !inputs.dry_run }}
+        working-directory: knowledge-repo
+        run: |
+          git config user.name  "knowledge-bot"
+          git config user.email "knowledge-bot@users.noreply.github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            if [ -n "${{ inputs.pr_number }}" ]; then
+              git commit -m "docs: knowledge entry for PR #${{ inputs.pr_number }}"
+            else
+              git commit -m "docs: backfill knowledge base entries"
+            fi
+            git push
+          fi
