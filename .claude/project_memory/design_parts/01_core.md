@@ -285,22 +285,24 @@ Each SSE `data:` line → `json.loads` → provider chunk model (provider wire m
 
 ## 7. fake_provider (`fake_provider.app:create_app`)
 
-Standalone FastAPI app, OpenAI wire format: `POST /v1/chat/completions` (stream / non-stream, optional tool call), `GET /v1/models`, `GET | PUT | DELETE /admin/config`, `GET /admin/stats` (`requests`, `open_connections`, `closed_connections`, `by_status`).
+Standalone FastAPI app, OpenAI wire format: `POST /v1/chat/completions` (stream / non-stream, optional tool call), `GET /v1/models`, `GET | POST | PUT | DELETE /admin/config` (alias `/_knobs`), `GET /admin/stats` (`requests`, `open_connections`, `closed_connections`, `by_status`).
 
-`FakeProviderConfig` (pydantic, `extra="forbid"`). Precedence: header `X-Fake-<Knob>` > query `fake_<knob>` > `/admin/config` (optionally scoped by `match_model: str | None`, so the primary fails while the fallback stays healthy, NFR-03) > defaults.
+`FakeKnobs` (pydantic, `extra="forbid"`, frozen; unknown or invalid knob → OpenAI 400). Precedence (highest first): header `X-Fake-<Knob>` (case-insensitive, `-` → `_`) > query `fake_<knob>` > global `/admin/config` | `/_knobs` > defaults. A global patch may carry `match_model: str` (exact match): its knobs form a rule layered over the unscoped globals only for requests with that `model`, so the primary fails while the fallback on the same fake stays healthy (NFR-03). Rules are kept in insertion order and at most one matches; a repeat patch for the same model merges into its rule; `DELETE` clears globals and rules. Every global patch restarts the seeded RNG streams.
 
 | Knob | Type = default | Effect |
 |---|---|---|
-| `latency_ms` | int = 0 | delay before response headers |
-| `ttft_ms` | int = 0 | delay between headers and first chunk |
-| `inter_chunk_ms` | int = 0 | delay between chunks |
-| `error_rate` | float 0–1 = 0 | chance of an error response (seeded RNG) |
-| `error_codes` | list[int] = [503] | status picked with `rng.choice` (429, 500, 503, 529, 400, 401 ...); OpenAI error body; 529 uses an `overloaded_error` body |
-| `retry_after_s` | float \| None = None | `Retry-After` header on 429/503 |
-| `hang` | `none \| before_headers \| before_first_chunk \| mid_stream` = none | sleeps until the client disconnects (TTFT / idle / deadline tests) |
-| `drop_after_n_chunks` | int \| None = None | closes the connection without `[DONE]` |
-| `malformed_after_n_chunks` | int \| None = None | sends invalid JSON as chunk N |
+| `latency_ms` | int ≥ 0 = 0 | delay before response headers |
+| `ttft_ms` | int ≥ 0 = 0 | delay between headers and first chunk |
+| `inter_chunk_ms` | int ≥ 0 = 0 | delay between chunks |
+| `error_rate` | float 0–1 = 0 | chance of an error response (seeded RNG roll) |
+| `error_status` | int = 503 | injected status (one of 400, 401, 429, 500, 503, 529); OpenAI error body; 529 uses an `overloaded_error` body |
+| `error_codes` | list[int] \| None = None | if set, wins over `error_status`: status picked with `rng.choice` from the same seeded stream; header/query form `429,503` |
+| `retry_after_s` | float ≥ 0 \| None = None | `Retry-After` on 429/503 as integer delay-seconds, `ceil(retry_after_s)` (RFC 9110); a 429 without it sends `1`; never on other statuses |
+| `hang` | `none \| before_headers \| before_first_chunk \| mid_stream` = none (bool shorthand `true` = `before_headers`) | stalls until the client disconnects or `hang_max_s` elapses (TTFT / idle / deadline tests); a pre-header hang then returns 504 |
+| `hang_max_s` | float (0, 3600] = 300 | upper bound on any hang |
+| `drop_after_chunks` | int ≥ 0 \| None = None | closes the stream after N chunks without `[DONE]` |
+| `malformed_at_chunk` | int ≥ 0 \| None = None | sends invalid JSON as chunk N (0-based) |
 | `usage` | bool = true | include `usage` (non-stream) / final usage chunk (stream) |
-| `chunks`, `text` | int = 8, str | response shape |
+| `chunks`, `text` | int 1–1000 = 8, str | response shape |
 | `tool_call` | bool = false | emit a tool call, arguments split across chunks |
 | `seed` | int = 0 | seeds the RNG so error injection is reproducible |

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections import Counter
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
@@ -12,7 +13,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from fake_provider.knobs import FakeKnobs, HangMode, KnobError, KnobResolver, KnobStore, RngPool
+from fake_provider.knobs import (
+    FakeKnobs,
+    HangMode,
+    KnobError,
+    KnobResolver,
+    KnobStore,
+    RngPool,
+    split_match_model,
+)
 from fake_provider.streaming import (
     ChunkStreamer,
     Clock,
@@ -26,7 +35,7 @@ from fake_provider.streaming import (
 
 MODEL_IDS = ("fake-model", "fake-model-fallback", "fake-model-mini")
 OWNER = "switchyard-fake"
-DEFAULT_429_RETRY_AFTER_S = 1.0
+DEFAULT_429_RETRY_AFTER_S = 1
 HANG_EXPIRED_STATUS = 504
 _ERROR_TYPES = {
     400: ("invalid_request_error", "invalid_request"),
@@ -82,10 +91,11 @@ class ErrorResponder:
     """Shapes OpenAI-style error responses."""
 
     def respond(self, status: int, message: str, retry_after_s: float | None = None) -> Response:
-        """Return a JSON error with an optional ``Retry-After`` header."""
+        """Return a JSON error with an optional ``Retry-After`` header (whole seconds)."""
         err_type, code = _ERROR_TYPES.get(status, ("server_error", "error"))
         body = {"error": {"message": message, "type": err_type, "param": None, "code": code}}
-        headers = {} if retry_after_s is None else {"Retry-After": f"{retry_after_s:g}"}
+        # RFC 9110 section 10.2.3: delay-seconds is a non-negative integer, so round up.
+        headers = {} if retry_after_s is None else {"Retry-After": str(math.ceil(retry_after_s))}
         return JSONResponse(status_code=status, content=body, headers=headers)
 
 
@@ -114,6 +124,7 @@ class CompletionService:
         request: ChatCompletionRequest,
         headers: Mapping[str, str],
         disconnected: DisconnectProbe = never_disconnected,
+        query: Mapping[str, str] | None = None,
     ) -> Response:
         """Return the completion (JSON or SSE) or an injected error.
 
@@ -121,11 +132,7 @@ class CompletionService:
         ``hang_max_s`` elapses, so no handler is ever parked forever.
         """
         self._stats.requests += 1
-        try:
-            knobs = self._resolver.resolve(headers)
-        except KnobError:
-            self._stats.by_status[400] += 1
-            raise
+        knobs = self._resolve(request, headers, query)
         await self._clock.sleep(knobs.latency_ms / 1000)
         if knobs.hang is not HangMode.NONE and (
             knobs.hang is HangMode.BEFORE_HEADERS or not request.stream
@@ -144,14 +151,28 @@ class CompletionService:
         await self._clock.sleep(knobs.ttft_ms / 1000)
         return self._record(JSONResponse(self._builder.completion(plan)))
 
+    def _resolve(
+        self,
+        request: ChatCompletionRequest,
+        headers: Mapping[str, str],
+        query: Mapping[str, str] | None,
+    ) -> FakeKnobs:
+        try:
+            return self._resolver.resolve(headers, query, request.model)
+        except KnobError:
+            self._stats.by_status[400] += 1
+            raise
+
     def _injected_status(self, knobs: FakeKnobs) -> int | None:
         if knobs.error_rate <= 0:
             return None
-        roll = self._rngs.for_seed(knobs.seed).random()
-        return knobs.error_status if roll < knobs.error_rate else None
+        rng = self._rngs.for_seed(knobs.seed)
+        if rng.random() >= knobs.error_rate:
+            return None
+        return rng.choice(knobs.error_codes) if knobs.error_codes else knobs.error_status
 
     def _error_for(self, status: int, knobs: FakeKnobs) -> Response:
-        retry_after = knobs.retry_after_s
+        retry_after: float | None = knobs.retry_after_s
         if status == 429 and retry_after is None:
             retry_after = DEFAULT_429_RETRY_AFTER_S
         if status not in (429, 503):
@@ -195,10 +216,14 @@ class AdminService:
         return FakeKnobs.from_overrides(self._store.overrides()).model_dump(mode="json")
 
     def update(self, patch: Mapping[str, Any]) -> dict[str, Any]:
-        """Merge ``patch`` into the global knobs and restart the seeded RNG streams."""
-        knobs = self._store.update(patch)
+        """Merge ``patch`` into the global (or ``match_model``-scoped) knobs; restart RNGs."""
+        knob_patch, match_model = split_match_model(patch)
+        knobs = self._store.update(knob_patch, match_model)
         self._rngs.reset()
-        return knobs.model_dump(mode="json")
+        body: dict[str, Any] = knobs.model_dump(mode="json")
+        if match_model is not None:
+            body["match_model"] = match_model
+        return body
 
     def reset(self) -> dict[str, Any]:
         """Clear every global override, restart RNG streams, and return the defaults."""
@@ -257,7 +282,9 @@ def create_app(clock: Clock | None = None) -> FastAPI:
     @app.post("/v1/chat/completions")
     async def chat_completions(body: ChatCompletionRequest, request: Request) -> Response:
         """OpenAI ``POST /v1/chat/completions``."""
-        return await service.handle(body, request.headers, request.is_disconnected)
+        return await service.handle(
+            body, request.headers, request.is_disconnected, request.query_params
+        )
 
     @app.get("/v1/models")
     async def list_models() -> dict[str, Any]:

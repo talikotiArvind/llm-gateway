@@ -10,6 +10,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 HEADER_PREFIX = "x-fake-"
+QUERY_PREFIX = "fake_"
+MATCH_MODEL_KEY = "match_model"
 SUPPORTED_ERROR_STATUSES = frozenset({400, 401, 429, 500, 503, 529})
 DEFAULT_TEXT = "Hello from the Switchyard fake provider. This reply is deterministic."
 MAX_CHUNKS = 1_000
@@ -33,7 +35,11 @@ class HangMode(StrEnum):
 
 
 class FakeKnobs(BaseModel):
-    """Effective knobs for one request (defaults < global store < x-fake-* headers)."""
+    """Effective knobs for one request.
+
+    Precedence (highest first): ``x-fake-*`` header > ``fake_*`` query > global store
+    (a ``match_model`` rule over the unscoped overrides) > defaults.
+    """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -42,6 +48,7 @@ class FakeKnobs(BaseModel):
     inter_chunk_ms: int = Field(default=0, ge=0)
     error_rate: float = Field(default=0.0, ge=0.0, le=1.0)
     error_status: int = 503
+    error_codes: tuple[int, ...] | None = Field(default=None, min_length=1)
     retry_after_s: float | None = Field(default=None, ge=0.0)
     hang: HangMode = HangMode.NONE
     hang_max_s: float = Field(default=DEFAULT_HANG_MAX_S, gt=0.0, le=MAX_HANG_S)
@@ -58,6 +65,22 @@ class FakeKnobs(BaseModel):
     def _check_error_status(cls, value: int) -> int:
         if value not in SUPPORTED_ERROR_STATUSES:
             raise ValueError(f"error_status must be one of {sorted(SUPPORTED_ERROR_STATUSES)}")
+        return value
+
+    @field_validator("error_codes", mode="before")
+    @classmethod
+    def _split_error_codes(cls, value: object) -> object:
+        # Header and query values arrive as "429,503".
+        if isinstance(value, str):
+            return tuple(part.strip() for part in value.split(",") if part.strip())
+        return value
+
+    @field_validator("error_codes")
+    @classmethod
+    def _check_error_codes(cls, value: tuple[int, ...] | None) -> tuple[int, ...] | None:
+        if value is not None:
+            for code in value:
+                cls._check_error_status(code)
         return value
 
     @field_validator("hang", mode="before")
@@ -85,44 +108,73 @@ class FakeKnobs(BaseModel):
 
 
 class KnobStore:
-    """Process-wide knob overrides set through the admin endpoints."""
+    """Process-wide knob overrides set through the admin endpoints.
+
+    Holds unscoped overrides plus ``match_model`` rules keyed by exact model id, in
+    insertion order. Exact matching means at most one rule applies; a repeat update for
+    the same model merges into its existing rule.
+    """
 
     def __init__(self) -> None:
         self._overrides: dict[str, Any] = {}
+        self._scoped: dict[str, dict[str, Any]] = {}
 
-    def overrides(self) -> dict[str, Any]:
-        """Return a copy of the current global overrides."""
-        return dict(self._overrides)
+    def overrides(self, model: str | None = None) -> dict[str, Any]:
+        """Return a copy of the global overrides, with the matching model rule on top."""
+        merged = dict(self._overrides)
+        if model is not None:
+            merged.update(self._scoped.get(model, {}))
+        return merged
 
-    def update(self, patch: Mapping[str, Any]) -> FakeKnobs:
-        """Merge ``patch`` into the global overrides after validating the result."""
-        merged = {**self._overrides, **patch}
-        knobs = FakeKnobs.from_overrides(merged)
-        self._overrides = {name: getattr(knobs, name) for name in sorted(merged)}
+    def update(self, patch: Mapping[str, Any], match_model: str | None = None) -> FakeKnobs:
+        """Merge ``patch`` into the unscoped overrides or the ``match_model`` rule."""
+        if match_model is None:
+            merged = {**self._overrides, **patch}
+            knobs = FakeKnobs.from_overrides(merged)
+            self._overrides = self._normalised(knobs, merged)
+            return knobs
+        rule = {**self._scoped.get(match_model, {}), **patch}
+        knobs = FakeKnobs.from_overrides({**self._overrides, **rule})
+        self._scoped[match_model] = self._normalised(knobs, rule)
         return knobs
 
     def reset(self) -> None:
-        """Drop every global override."""
+        """Drop every global override and model rule."""
         self._overrides = {}
+        self._scoped = {}
+
+    @staticmethod
+    def _normalised(knobs: FakeKnobs, names: Mapping[str, Any]) -> dict[str, Any]:
+        return {name: getattr(knobs, name) for name in sorted(names)}
 
 
 class KnobResolver:
-    """Combines global overrides with ``x-fake-*`` request headers."""
+    """Combines global overrides with ``fake_*`` query params and ``x-fake-*`` headers."""
 
     def __init__(self, store: KnobStore) -> None:
         self._store = store
 
-    def resolve(self, headers: Mapping[str, str]) -> FakeKnobs:
-        """Return the effective knobs; headers win over the global store."""
-        return FakeKnobs.from_overrides({**self._store.overrides(), **self._from_headers(headers)})
+    def resolve(
+        self,
+        headers: Mapping[str, str],
+        query: Mapping[str, str] | None = None,
+        model: str | None = None,
+    ) -> FakeKnobs:
+        """Return the effective knobs: header > query > global (model-scoped) > defaults."""
+        layered = {
+            **self._store.overrides(model),
+            **self._prefixed(query or {}, QUERY_PREFIX),
+            **self._prefixed(headers, HEADER_PREFIX),
+        }
+        return FakeKnobs.from_overrides(layered)
 
     @staticmethod
-    def _from_headers(headers: Mapping[str, str]) -> dict[str, str]:
+    def _prefixed(source: Mapping[str, str], prefix: str) -> dict[str, str]:
         found: dict[str, str] = {}
-        for name, value in headers.items():
+        for name, value in source.items():
             lowered = name.lower()
-            if lowered.startswith(HEADER_PREFIX):
-                found[lowered[len(HEADER_PREFIX) :].replace("-", "_")] = value
+            if lowered.startswith(prefix):
+                found[lowered[len(prefix) :].replace("-", "_")] = value
         return found
 
 
@@ -146,6 +198,17 @@ class RngPool:
     def reset(self) -> None:
         """Restart every seeded stream from the beginning."""
         self._by_seed = {}
+
+
+def split_match_model(patch: Mapping[str, Any]) -> tuple[dict[str, Any], str | None]:
+    """Separate the optional ``match_model`` scope from a global knob patch."""
+    knobs = {name: value for name, value in patch.items() if name != MATCH_MODEL_KEY}
+    match_model = patch.get(MATCH_MODEL_KEY)
+    if match_model is None:
+        return knobs, None
+    if not isinstance(match_model, str) or not match_model.strip():
+        raise KnobError("match_model must be a non-empty string")
+    return knobs, match_model
 
 
 def _describe(exc: ValidationError) -> str:

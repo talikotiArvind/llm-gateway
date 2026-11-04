@@ -115,7 +115,7 @@ class ErrorInjectionTest(FakeProviderTestCase):
         self.assertEqual("rate_limit_error", response.json()["error"]["type"])
         knobs = {"error_rate": "1", "error_status": "429", "retry_after_s": "2.5"}
         custom = await self._chat(knobs)
-        self.assertEqual("2.5", custom.headers["retry-after"])
+        self.assertEqual("3", custom.headers["retry-after"])  # RFC 9110: ceil to whole seconds
 
     async def test_503_retry_after_only_when_set(self) -> None:
         plain = await self._chat({"error_rate": "1", "error_status": "503"})
@@ -123,6 +123,32 @@ class ErrorInjectionTest(FakeProviderTestCase):
         self.assertNotIn("retry-after", plain.headers)
         timed = await self._chat({"error_rate": "1", "error_status": "503", "retry_after_s": "4"})
         self.assertEqual("4", timed.headers["retry-after"])
+
+    async def test_error_codes_win_over_error_status(self) -> None:
+        knobs = {"error_rate": "1", "error_status": "500", "error_codes": "529"}
+        self.assertEqual(529, (await self._chat(knobs)).status_code)
+
+    async def test_error_codes_pick_is_seeded(self) -> None:
+        knobs = {"error_rate": "1", "error_codes": "429,500,503,529", "seed": "11"}
+        rng = random.Random(11)  # noqa: S311  # nosec B311
+        expected = []
+        for _ in range(4):
+            rng.random()
+            expected.append(rng.choice((429, 500, 503, 529)))
+        async with self._client() as client:
+            headers = {f"x-fake-{k.replace('_', '-')}": v for k, v in knobs.items()}
+            got = [
+                (await client.post(CHAT_PATH, json=BODY, headers=headers)).status_code
+                for _ in range(4)
+            ]
+        self.assertEqual(expected, got)
+
+    async def test_admin_patch_echoes_match_model(self) -> None:
+        async with self._client() as client:
+            body = (await client.post("/_knobs", json={"seed": 2, "match_model": "m"})).json()
+            bad = await client.post("/_knobs", json={"match_model": ""})
+        self.assertEqual(("m", 2), (body["match_model"], body["seed"]))
+        self.assertEqual(400, bad.status_code)
 
     async def test_529_is_overloaded_without_retry_after(self) -> None:
         knobs = {"error_rate": "1", "error_status": "529", "retry_after_s": "4"}

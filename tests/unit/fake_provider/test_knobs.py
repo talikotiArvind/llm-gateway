@@ -13,6 +13,7 @@ from fake_provider.knobs import (
     KnobResolver,
     KnobStore,
     RngPool,
+    split_match_model,
 )
 
 
@@ -81,6 +82,50 @@ class KnobStoreAndResolverTest(unittest.TestCase):
     def test_unknown_header_knob_fails(self) -> None:
         with self.assertRaises(KnobError):
             KnobResolver(KnobStore()).resolve({"x-fake-bogus": "1"})
+
+    def test_precedence_header_over_query_over_store(self) -> None:
+        store = KnobStore()
+        store.update({"latency_ms": 1, "ttft_ms": 1, "inter_chunk_ms": 1})
+        query = {"fake_ttft_ms": "2", "fake_latency_ms": "2", "other": "x"}
+        knobs = KnobResolver(store).resolve({"x-fake-latency-ms": "3"}, query)
+        self.assertEqual((3, 2, 1), (knobs.latency_ms, knobs.ttft_ms, knobs.inter_chunk_ms))
+
+    def test_model_rule_applies_only_to_matching_model(self) -> None:
+        store = KnobStore()
+        store.update({"latency_ms": 5})
+        store.update({"error_rate": 1.0}, match_model="fake-model")
+        store.update({"ttft_ms": 4}, match_model="fake-model")
+        resolver = KnobResolver(store)
+        scoped = resolver.resolve({}, model="fake-model")
+        other = resolver.resolve({}, model="fake-model-fallback")
+        self.assertEqual((1.0, 4, 5), (scoped.error_rate, scoped.ttft_ms, scoped.latency_ms))
+        self.assertEqual((0.0, 0, 5), (other.error_rate, other.ttft_ms, other.latency_ms))
+        store.reset()
+        self.assertEqual({}, store.overrides("fake-model"))
+
+    def test_split_match_model(self) -> None:
+        self.assertEqual(({"seed": 1}, None), split_match_model({"seed": 1}))
+        self.assertEqual(({}, "m"), split_match_model({"match_model": "m"}))
+        for bad in ("", "  ", 3):
+            with self.subTest(match_model=bad), self.assertRaises(KnobError):
+                split_match_model({"match_model": bad})
+
+
+@pytest.mark.unit
+class ErrorCodesKnobTest(unittest.TestCase):
+    """``error_codes`` accepts lists or comma-separated strings of supported statuses."""
+
+    def test_parses_comma_separated_string(self) -> None:
+        knobs = FakeKnobs.from_overrides({"error_codes": "429, 503"})
+        self.assertEqual((429, 503), knobs.error_codes)
+
+    def test_accepts_list(self) -> None:
+        self.assertEqual((529,), FakeKnobs.from_overrides({"error_codes": [529]}).error_codes)
+
+    def test_rejects_unsupported_or_empty(self) -> None:
+        for bad in ([418], "", []):
+            with self.subTest(error_codes=bad), self.assertRaises(KnobError):
+                FakeKnobs.from_overrides({"error_codes": bad})
 
 
 @pytest.mark.unit
