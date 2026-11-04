@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from src.resource.base_gemini import GeminiBaseAgent
+from src.ai.base_gemini import GeminiBaseAgent
 
 
 class FactCheckerGeminiAgent(GeminiBaseAgent):

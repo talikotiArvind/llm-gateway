@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.resource.base_gemini import BaseAgent as GeminiBaseAgent
+from src.ai.base_gemini import BaseAgent as GeminiBaseAgent
 from src.app.agents.football_match_analyzer_gemini_agent import FootballMatchAnalyzerGeminiAgent
 
 
@@ -64,7 +64,7 @@ class TestFootballMatchAnalyzerGeminiAgentOverrides(unittest.TestCase):
 class TestFootballMatchAnalyzerGeminiAgentRun(unittest.TestCase):
     """Tests for FootballMatchAnalyzerGeminiAgent.run() with a mocked genai backend."""
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_delegates_to_base(self, mock_genai: MagicMock) -> None:
         """run() must delegate to the base agent and return the mocked response text."""
         mock_chat = MagicMock()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from src.resource.base_claude import ClaudeBaseAgent
+from src.ai.base_claude import ClaudeBaseAgent
 
 
 class ReviewerClaudeAgent(ClaudeBaseAgent):

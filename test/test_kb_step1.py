@@ -35,8 +35,8 @@ class TestKBModels(unittest.TestCase):
             ModuleSnapshot: A snapshot representing a single-class data-access module.
         """
         return ModuleSnapshot(
-            file_path="src/resource/base_claude.py",
-            module_slug="src--resource--base_claude",
+            file_path="src/ai/base_claude.py",
+            module_slug="src--ai--base_claude",
             layer=LayerType.data_access,
             classes=[ClassInfo(name="ClaudeBaseAgent", docstring="Wraps Anthropic SDK.", methods=["run(task)"])],
             module_docstring="Claude base agent module.",
@@ -54,8 +54,8 @@ class TestKBModels(unittest.TestCase):
     def test_kbnote_to_markdown_contains_module(self):
         """KBNote.to_markdown() renders module path, PR number, and prose summary."""
         note = KBNote(
-            module="src/resource/base_claude.py",
-            module_slug="src--resource--base_claude",
+            module="src/ai/base_claude.py",
+            module_slug="src--ai--base_claude",
             layer="data-access",
             last_pr=7,
             last_updated=datetime(2026, 6, 27, tzinfo=timezone.utc),
@@ -67,7 +67,7 @@ class TestKBModels(unittest.TestCase):
             pr_title="feat: add vault write-back",
         )
         md = note.to_markdown()
-        self.assertIn("src/resource/base_claude.py", md)
+        self.assertIn("src/ai/base_claude.py", md)
         self.assertIn("PR #7", md)
         self.assertIn("ClaudeBaseAgent wraps the Anthropic SDK.", md)
         self.assertIn("last_pr: 7", md)
@@ -78,8 +78,8 @@ class TestKBModels(unittest.TestCase):
             pr_number=12,
             pr_title="feat: A2A streaming",
             merged_at=datetime(2026, 6, 27, tzinfo=timezone.utc),
-            files_changed=["src/resource/base_claude.py"],
-            summaries={"src/resource/base_claude.py": "Added streaming support."},
+            files_changed=["src/ai/base_claude.py"],
+            summaries={"src/ai/base_claude.py": "Added streaming support."},
         )
         md = cl.to_markdown()
         self.assertIn("PR #12", md)
@@ -153,11 +153,11 @@ class TestASTSummariser(unittest.TestCase):
 
     def test_slug(self):
         """_slug() converts a file path into a double-dash-separated slug."""
-        self.assertEqual(_slug("src/resource/base_claude.py"), "src--resource--base_claude")
+        self.assertEqual(_slug("src/ai/base_claude.py"), "src--ai--base_claude")
 
     def test_infer_layer_data_access(self):
-        """_infer_layer() classifies src/resource paths as data_access."""
-        self.assertEqual(_infer_layer("src/resource/base_claude.py"), LayerType.data_access)
+        """_infer_layer() classifies src/ai paths as data_access."""
+        self.assertEqual(_infer_layer("src/ai/base_claude.py"), LayerType.data_access)
 
     def test_infer_layer_api(self):
         """_infer_layer() classifies rag_pipeline/api paths as api."""
@@ -193,8 +193,8 @@ class TestKBWriterReader(unittest.TestCase):
             KBNote: A note describing the OpenAI base agent module.
         """
         return KBNote(
-            module="src/resource/base_openai.py",
-            module_slug="src--resource--base_openai",
+            module="src/ai/base_openai.py",
+            module_slug="src--ai--base_openai",
             layer="data-access",
             last_pr=5,
             last_updated=datetime(2026, 6, 27, tzinfo=timezone.utc),
@@ -213,7 +213,7 @@ class TestKBWriterReader(unittest.TestCase):
             path = writer.write_module_note(self._note())
             self.assertTrue(Path(path).exists())
             content = Path(path).read_text(encoding="utf-8")
-            self.assertIn("src/resource/base_openai.py", content)
+            self.assertIn("src/ai/base_openai.py", content)
 
     def test_write_module_note_upserts(self):
         """write_module_note() on the same module updates the existing file in place."""
@@ -234,8 +234,8 @@ class TestKBWriterReader(unittest.TestCase):
                 pr_number=3,
                 pr_title="fix: gemini loop",
                 merged_at=datetime(2026, 6, 27, tzinfo=timezone.utc),
-                files_changed=["src/resource/base_gemini.py"],
-                summaries={"src/resource/base_gemini.py": "Fixed loop exit condition."},
+                files_changed=["src/ai/base_gemini.py"],
+                summaries={"src/ai/base_gemini.py": "Fixed loop exit condition."},
             )
             path = KBWriter(vault).write_changelog(cl)
             self.assertTrue(Path(path).exists())
@@ -249,14 +249,14 @@ class TestKBWriterReader(unittest.TestCase):
             index_path = writer.write_index()
             content = Path(index_path).read_text(encoding="utf-8")
             self.assertIn("Knowledge Base Index", content)
-            self.assertIn("src/resource/base_openai.py", content)
+            self.assertIn("src/ai/base_openai.py", content)
 
     def test_reader_get_context(self):
         """get_context() returns text containing the written note's prose summary."""
         with TemporaryDirectory() as vault:
             KBWriter(vault).write_module_note(self._note())
             reader = KBReader(vault)
-            ctx = reader.get_context("src/resource/base_openai.py")
+            ctx = reader.get_context("src/ai/base_openai.py")
             self.assertIn("Wraps the OpenAI Agents SDK.", ctx)
 
     def test_reader_missing_returns_empty(self):
@@ -270,15 +270,15 @@ class TestKBWriterReader(unittest.TestCase):
         with TemporaryDirectory() as vault:
             KBWriter(vault).write_module_note(self._note())
             reader = KBReader(vault)
-            self.assertTrue(reader.has_note("src/resource/base_openai.py"))
-            self.assertFalse(reader.has_note("src/resource/base_gemini.py"))
+            self.assertTrue(reader.has_note("src/ai/base_openai.py"))
+            self.assertFalse(reader.has_note("src/ai/base_gemini.py"))
 
     def test_reader_list_modules(self):
         """list_modules() includes the slug of a module with a written note."""
         with TemporaryDirectory() as vault:
             KBWriter(vault).write_module_note(self._note())
             modules = KBReader(vault).list_modules()
-            self.assertIn("src--resource--base_openai", modules)
+            self.assertIn("src--ai--base_openai", modules)
 
 
 class TestParseFrontmatter(unittest.TestCase):

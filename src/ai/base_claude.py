@@ -10,7 +10,7 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 from pydantic import Field
 
-from src.resource.base_agent import AbstractBaseAgent
+from src.ai.base_agent import AbstractBaseAgent
 
 load_dotenv()
 
@@ -101,7 +101,7 @@ class ClaudeBaseAgent(AbstractBaseAgent):
         """
         if not self.peers:
             return []
-        from src.resource.a2a.tool_adapter import to_anthropic_tools
+        from src.ai.a2a.tool_adapter import to_anthropic_tools
         return to_anthropic_tools(self.peers)
 
     def _handle_tool_use(self, tool_name: str, tool_input: dict[str, Any]) -> str:
@@ -116,7 +116,7 @@ class ClaudeBaseAgent(AbstractBaseAgent):
             str: The peer's output, or a placeholder string if tool_name does
                 not match any declared peer.
         """
-        from src.resource.a2a.tool_adapter import handle_anthropic_tool_call
+        from src.ai.a2a.tool_adapter import handle_anthropic_tool_call
         result = handle_anthropic_tool_call(tool_name, tool_input, self.peers)
         if result is None:
             return f"[tool '{tool_name}' not found in peers]"

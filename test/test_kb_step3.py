@@ -21,7 +21,7 @@ class TestIsTracked(unittest.TestCase):
 
     def test_src_py_tracked(self):
         """A .py file under src/ is tracked."""
-        self.assertTrue(_is_tracked("src/resource/base_claude.py"))
+        self.assertTrue(_is_tracked("src/ai/base_claude.py"))
 
     def test_pipeline_py_tracked(self):
         """A .py file under pipeline/ is tracked."""
@@ -41,7 +41,7 @@ class TestIsTracked(unittest.TestCase):
 
     def test_non_py_not_tracked(self):
         """A non-.py file is not tracked."""
-        self.assertFalse(_is_tracked("src/resource/config.yaml"))
+        self.assertFalse(_is_tracked("src/ai/config.yaml"))
 
     def test_docs_not_tracked(self):
         """A file under docs/ is not tracked."""
@@ -96,13 +96,13 @@ class TestChangeDetector(unittest.TestCase):
     def test_detect_modified_file(self, mock_run):
         """detect() returns a record with the modified file's path, type, and PR number."""
         mock_run.side_effect = [
-            "M\tsrc/resource/base_claude.py",   # name-status
+            "M\tsrc/ai/base_claude.py",   # name-status
             "@@ -1,3 +1,5 @@\n+new line\n+another",  # diff
         ]
         detector = ChangeDetector(repo_root=".")
         records = detector.detect(pr_number=5, pr_title="feat: test")
         self.assertEqual(len(records), 1)
-        self.assertEqual(records[0].file_path, "src/resource/base_claude.py")
+        self.assertEqual(records[0].file_path, "src/ai/base_claude.py")
         self.assertEqual(records[0].change_type, ChangeType.modified)
         self.assertEqual(records[0].pr_number, 5)
 
@@ -110,7 +110,7 @@ class TestChangeDetector(unittest.TestCase):
     def test_detect_skips_test_files(self, mock_run):
         """detect() excludes test files from the returned change records."""
         mock_run.side_effect = [
-            "M\ttest/test_base_claude.py\nM\tsrc/resource/base_claude.py",
+            "M\ttest/test_base_claude.py\nM\tsrc/ai/base_claude.py",
             "",   # diff for base_claude
         ]
         detector = ChangeDetector(repo_root=".")
@@ -141,7 +141,7 @@ class TestChangeDetector(unittest.TestCase):
     def test_diff_stat_contains_plus_minus(self, mock_run):
         """detect() computes a diff_stat string with correct added/removed counts."""
         mock_run.side_effect = [
-            "M\tsrc/resource/base_openai.py",
+            "M\tsrc/ai/base_openai.py",
             "+added line\n+another add\n-removed line",
         ]
         detector = ChangeDetector(repo_root=".")
@@ -161,14 +161,14 @@ class TestCollectPyFiles(unittest.TestCase):
         """Files under src/ and pipeline/ are collected with forward-slash paths."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / "src" / "resource").mkdir(parents=True)
-            (root / "src" / "resource" / "base_claude.py").write_text("x=1")
-            (root / "src" / "resource" / "base_openai.py").write_text("x=1")
+            (root / "src" / "ai").mkdir(parents=True)
+            (root / "src" / "ai" / "base_claude.py").write_text("x=1")
+            (root / "src" / "ai" / "base_openai.py").write_text("x=1")
             (root / "pipeline" / "second_brain").mkdir(parents=True)
             (root / "pipeline" / "second_brain" / "vault_retriever.py").write_text("x=1")
             files = _collect_py_files(root)
-        self.assertIn("src/resource/base_claude.py", files)
-        self.assertIn("src/resource/base_openai.py", files)
+        self.assertIn("src/ai/base_claude.py", files)
+        self.assertIn("src/ai/base_openai.py", files)
         self.assertIn("pipeline/second_brain/vault_retriever.py", files)
 
     def test_excludes_test_files(self):

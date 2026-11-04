@@ -31,9 +31,9 @@ MARKER_END_PATTERN = re.compile(r"<!-- END: (.+?) -->")
 # Path-segment -> CLAUDE.md four-layer name. Best-effort heuristic, not a parser
 # of design.md (design.md is transient — only exists mid-feature).
 LAYER_MARKERS: dict[str, str] = {
-    "resource": "resource (data access)",
-    "infrastructure": "resource (data access)",
-    "repository": "resource (data access)",
+    "ai": "ai (data access)",
+    "infrastructure": "ai (data access)",
+    "repository": "ai (data access)",
     "app": "app (service logic)",
     "domain": "app (service logic)",
     "service": "app (service logic)",

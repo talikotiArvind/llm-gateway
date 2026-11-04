@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
-    from src.resource.a2a.protocol import A2APeer
+    from src.ai.a2a.protocol import A2APeer
 
 
 # ---------------------------------------------------------------------------

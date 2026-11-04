@@ -16,7 +16,7 @@ from pipeline.second_brain.kb_models import (
 from pipeline.second_brain.kb_summariser import KBSummariser, _pick_model, _HAIKU, _SONNET
 
 
-def _make_record(diff_lines: int = 10, file_path: str = "src/resource/base_claude.py") -> ChangeRecord:
+def _make_record(diff_lines: int = 10, file_path: str = "src/ai/base_claude.py") -> ChangeRecord:
     """Build a sample ChangeRecord with a synthetic diff of the given size.
 
     Args:
@@ -28,7 +28,7 @@ def _make_record(diff_lines: int = 10, file_path: str = "src/resource/base_claud
     """
     snap = ModuleSnapshot(
         file_path=file_path,
-        module_slug="src--resource--base_claude",
+        module_slug="src--ai--base_claude",
         layer=LayerType.data_access,
         classes=[ClassInfo(name="ClaudeBaseAgent", docstring="Wraps Anthropic.", methods=["run(task)"])],
         module_docstring="Claude base agent.",
@@ -146,7 +146,7 @@ class TestKBSummariser(unittest.TestCase):
     def test_summarise_many_returns_all(self):
         """summarise_many() returns one populated result per input record."""
         s, _ = self._summariser("prose")
-        records = [_make_record(), _make_record(file_path="src/resource/base_openai.py")]
+        records = [_make_record(), _make_record(file_path="src/ai/base_openai.py")]
         results = s.summarise_many(records)
         self.assertEqual(len(results), 2)
         self.assertTrue(all(r.prose_summary for r in results))
@@ -155,7 +155,7 @@ class TestKBSummariser(unittest.TestCase):
         """summarise_to_note() maps record and snapshot fields onto a KBNote."""
         s, _ = self._summariser("ClaudeBaseAgent is the data-access wrapper.")
         note = s.summarise_to_note(_make_record())
-        self.assertEqual(note.module, "src/resource/base_claude.py")
+        self.assertEqual(note.module, "src/ai/base_claude.py")
         self.assertEqual(note.last_pr, 7)
         self.assertEqual(note.classes, ["ClaudeBaseAgent"])
         self.assertIn("run(task)", note.key_methods)
@@ -175,7 +175,7 @@ class TestKBSummariser(unittest.TestCase):
         s, mock_client = self._summariser()
         s.summarise(_make_record())
         prompt_text = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
-        self.assertIn("src/resource/base_claude.py", prompt_text)
+        self.assertIn("src/ai/base_claude.py", prompt_text)
 
     def test_api_prompt_contains_pr_number(self):
         """The prompt sent to the API must include the PR number."""

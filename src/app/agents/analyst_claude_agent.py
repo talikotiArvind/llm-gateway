@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from src.resource.base_claude import ClaudeBaseAgent
+from src.ai.base_claude import ClaudeBaseAgent
 
 
 class AnalystClaudeAgent(ClaudeBaseAgent):
@@ -12,7 +12,7 @@ class AnalystClaudeAgent(ClaudeBaseAgent):
 
     Typical wiring::
 
-        from src.resource.a2a.protocol import A2APeer
+        from src.ai.a2a.protocol import A2APeer
         from src.app.agents.fact_checker_gemini_agent import FactCheckerGeminiAgent
 
         analyst = AnalystClaudeAgent(

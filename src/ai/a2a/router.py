@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 
-from src.resource.a2a.protocol import A2AMessage, A2APeer, A2AResponse
+from src.ai.a2a.protocol import A2AMessage, A2APeer, A2AResponse
 
 logger = logging.getLogger(__name__)
 

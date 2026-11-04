@@ -9,7 +9,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from pydantic import Field
 
-from src.resource.base_agent import AbstractBaseAgent
+from src.ai.base_agent import AbstractBaseAgent
 
 load_dotenv()
 
@@ -46,7 +46,7 @@ class GeminiBaseAgent(AbstractBaseAgent):
         """
         if not self.peers:
             return []
-        from src.resource.a2a.tool_adapter import to_gemini_tools
+        from src.ai.a2a.tool_adapter import to_gemini_tools
         return to_gemini_tools(self.peers)
 
     def _handle_function_call(self, function_name: str, function_args: dict[str, Any]) -> str:
@@ -61,7 +61,7 @@ class GeminiBaseAgent(AbstractBaseAgent):
             str: The peer's output, or a placeholder string if function_name
                 does not match any declared peer.
         """
-        from src.resource.a2a.tool_adapter import handle_gemini_function_call
+        from src.ai.a2a.tool_adapter import handle_gemini_function_call
         result = handle_gemini_function_call(function_name, function_args, self.peers)
         if result is None:
             return f"[function '{function_name}' not found in peers]"

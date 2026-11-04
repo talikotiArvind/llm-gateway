@@ -75,7 +75,7 @@ For each changed file, verify the applicable sections:
 - [ ] SQL (only applicable if a data-access module uses one): parameterized queries or ORM — no `f"SELECT ... {user_input}"`
 
 ### A2A / MCP Boundary Authorization
-- [ ] Inbound agent-to-agent (`src/resource/a2a`) or MCP tool requests are validated (schema + scope) before
+- [ ] Inbound agent-to-agent (`../../src/ai/a2a`) or MCP tool requests are validated (schema + scope) before
       any tool executes — an inbound request cannot request a tool/action outside its declared scope
 - [ ] Cross-agent identifiers (session IDs, agent IDs) are not logged or echoed back in a way that lets one
       caller impersonate another

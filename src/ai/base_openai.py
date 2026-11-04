@@ -9,7 +9,7 @@ from agents import Agent, Runner, set_default_openai_key
 from dotenv import load_dotenv
 from pydantic import Field
 
-from src.resource.base_agent import AbstractBaseAgent
+from src.ai.base_agent import AbstractBaseAgent
 
 load_dotenv()
 
@@ -38,7 +38,7 @@ class OpenAIBaseAgent(AbstractBaseAgent):
         """
         if not self.peers:
             return []
-        from src.resource.a2a.tool_adapter import to_openai_handoffs
+        from src.ai.a2a.tool_adapter import to_openai_handoffs
         return to_openai_handoffs(self.peers)
 
     # ------------------------------------------------------------------

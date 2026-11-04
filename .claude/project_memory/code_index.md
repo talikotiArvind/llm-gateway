@@ -314,7 +314,7 @@ Only load a full source file when you need to inspect specific logic.
     - `@classmethod from_config(cls, config: dict[str, object]) -> 'VaultRetriever | None'`: Construct a retriever from the second_brain config block.
 <!-- END: C:/02_MyFIles/projects/my-claude-code-projects/pipeline/second_brain/vault_retriever.py -->
 
-<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_claude.py -->
+<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/base_claude.py -->
 ## C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_claude.py
 *Updated: 2026-07-09 22:17*
 
@@ -326,7 +326,7 @@ Only load a full source file when you need to inspect specific logic.
     - `_build_anthropic_tools(self) -> list[dict[str, Any]]`: Build Anthropic tool definitions for this agent's declared peers.
     - `_handle_tool_use(self, tool_name: str, tool_input: dict[str, Any]) -> str`: Execute the peer agent targeted by an Anthropic tool_use block.
     - `run(self, message: str, project_id: str = 'default', **kwargs: object) -> str`: Execute the agent synchronously via the Anthropic Messages API.
-<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_claude.py -->
+<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/base_claude.py -->
 
 <!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/orchestrator.py -->
 ## C:/02_MyFIles/projects/my-claude-code-projects/orchestrator.py
@@ -1414,7 +1414,7 @@ Only load a full source file when you need to inspect specific logic.
   - `PythonCoderClaudeAgent(BaseAgent)`: Writes clean, efficient, and well-documented Python code, powered by Claude.
 <!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/app/agents/python_coder_claude_agent.py -->
 
-<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/a2a/protocol.py -->
+<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/a2a/protocol.py -->
 ## C:/02_MyFIles/projects/my-claude-code-projects/src/resource/a2a/protocol.py
 *Updated: 2026-07-07 21:44*
 
@@ -1423,9 +1423,9 @@ Only load a full source file when you need to inspect specific logic.
   - `A2AMessage(BaseModel)`: Envelope sent from one agent to a peer agent.
   - `A2AResponse(BaseModel)`: Response returned by a peer agent after handling an A2AMessage.
   - `A2APeer(BaseModel)`: Declares a peer agent reachable by name via delegate().
-<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/a2a/protocol.py -->
+<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/a2a/protocol.py -->
 
-<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/a2a/router.py -->
+<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/a2a/router.py -->
 ## C:/02_MyFIles/projects/my-claude-code-projects/src/resource/a2a/router.py
 *Updated: 2026-07-07 21:44*
 
@@ -1437,9 +1437,9 @@ Only load a full source file when you need to inspect specific logic.
     - `async dispatch_async(self, peer_name: str, message: A2AMessage) -> A2AResponse`: Route a message to the named peer asynchronously.
     - `_resolve(self, peer_name: str) -> A2APeer`: Look up a registered peer by name.
     - `@property registered_peers(self) -> list[str]`: Return the sorted list of registered peer names.
-<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/a2a/router.py -->
+<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/a2a/router.py -->
 
-<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/a2a/tool_adapter.py -->
+<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/a2a/tool_adapter.py -->
 ## C:/02_MyFIles/projects/my-claude-code-projects/src/resource/a2a/tool_adapter.py
 *Updated: 2026-07-09 22:42*
 
@@ -1451,9 +1451,9 @@ Only load a full source file when you need to inspect specific logic.
 - `to_gemini_tools(peers: list[A2APeer]) -> list[Any]`: Convert peers to Gemini FunctionDeclaration tools.
 - `handle_gemini_function_call(function_name: str, function_args: dict[str, Any], peers: list[A2APeer]) -> str | None`: Execute the peer agent for a Gemini function_call part.
 - `_safe_tool_name(name: str) -> str`: Normalize a peer name to a valid tool identifier.
-<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/a2a/tool_adapter.py -->
+<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/a2a/tool_adapter.py -->
 
-<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_agent.py -->
+<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/base_agent.py -->
 ## C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_agent.py
 *Updated: 2026-07-09 22:42*
 
@@ -1466,9 +1466,9 @@ Only load a full source file when you need to inspect specific logic.
     - `async delegate_async(self, peer_name: str, message: str, trace_id: str | None = None) -> A2AResponse`: Send a sub-task to a named peer agent asynchronously.
     - `@property peer_names(self) -> list[str]`: Return the sorted list of declared peer names.
     - `has_peers(self) -> bool`: Check whether this agent has any declared peers.
-<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_agent.py -->
+<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/base_agent.py -->
 
-<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_gemini.py -->
+<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/base_gemini.py -->
 ## C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_gemini.py
 *Updated: 2026-07-07 21:45*
 
@@ -1479,9 +1479,9 @@ Only load a full source file when you need to inspect specific logic.
     - `_build_gemini_tools(self) -> list[Any]`: Build Gemini Tool objects for this agent's declared peers.
     - `_handle_function_call(self, function_name: str, function_args: dict[str, Any]) -> str`: Execute the peer agent targeted by a Gemini function_call part.
     - `run(self, message: str, **kwargs: object) -> str`: Execute the agent synchronously via a Gemini GenerativeModel chat.
-<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_gemini.py -->
+<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/base_gemini.py -->
 
-<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_openai.py -->
+<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/base_openai.py -->
 ## C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_openai.py
 *Updated: 2026-07-09 22:43*
 
@@ -1490,7 +1490,7 @@ Only load a full source file when you need to inspect specific logic.
   - `OpenAIBaseAgent(AbstractBaseAgent)`: Base for all OpenAI-backed agents.
     - `_build_openai_handoffs(self) -> list[Any]`: Build openai-agents handoff objects for this agent's declared peers.
     - `run(self, message: str, **kwargs: object) -> str`: Execute the agent synchronously via the openai-agents Runner.
-<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/base_openai.py -->
+<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/base_openai.py -->
 
 <!-- BEGIN: C:/Users/ATALIK~1/AppData/Local/Temp/claude/C--02-MyFIles-projects-my-claude-code-projects/5dce7e88-25b3-476d-9f48-a0d0775cb81e/scratchpad/check_docstrings.py -->
 ## C:/Users/ATALIK~1/AppData/Local/Temp/claude/C--02-MyFIles-projects-my-claude-code-projects/5dce7e88-25b3-476d-9f48-a0d0775cb81e/scratchpad/check_docstrings.py
@@ -1520,12 +1520,12 @@ Only load a full source file when you need to inspect specific logic.
 **Purpose**: Concrete, provider-backed agent classes (Claude, OpenAI, Gemini).
 <!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/app/agents/__init__.py -->
 
-<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/__init__.py -->
+<!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/__init__.py -->
 ## C:/02_MyFIles/projects/my-claude-code-projects/src/resource/__init__.py
 *Updated: 2026-07-07 21:46*
 
 **Purpose**: Resource layer: provider base classes and A2A infrastructure.
-<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/resource/__init__.py -->
+<!-- END: C:/02_MyFIles/projects/my-claude-code-projects/src/ai/__init__.py -->
 
 <!-- BEGIN: C:/02_MyFIles/projects/my-claude-code-projects/test/__init__.py -->
 ## C:/02_MyFIles/projects/my-claude-code-projects/test/__init__.py

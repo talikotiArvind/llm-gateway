@@ -1,6 +1,6 @@
 """Claude-backed professional Python coder agent."""
 
-from src.resource.base_claude import BaseAgent
+from src.ai.base_claude import BaseAgent
 from pydantic import Field
 
 

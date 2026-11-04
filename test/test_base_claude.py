@@ -1,10 +1,10 @@
-"""Unit tests for src/resource/base_claude.py."""
+"""Unit tests for src/ai/base_claude.py."""
 
 import pytest
 from unittest.mock import patch, MagicMock
 from pydantic import ValidationError
 
-from src.resource.base_claude import BaseAgent
+from src.ai.base_claude import BaseAgent
 
 
 class TestBaseAgentInstantiation:
@@ -60,7 +60,7 @@ class TestBaseAgentRun:
         mock_client.messages.create.return_value = mock_response
         return mock_client
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_creates_anthropic_client_with_api_key(self, mock_anthropic_cls):
         """Anthropic client must be instantiated once with an api_key kwarg."""
         mock_anthropic_cls.return_value = self._make_mock_client()
@@ -71,7 +71,7 @@ class TestBaseAgentRun:
         mock_anthropic_cls.assert_called_once()
         assert "api_key" in mock_anthropic_cls.call_args.kwargs
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_calls_messages_create_with_correct_params(self, mock_anthropic_cls):
         """messages.create() must receive model, max_tokens, system, and messages."""
         mock_client = self._make_mock_client()
@@ -87,7 +87,7 @@ class TestBaseAgentRun:
             messages=[{"role": "user", "content": "User message"}],
         )
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_uses_overridden_model(self, mock_anthropic_cls):
         """When a custom model is set, messages.create() must receive that model."""
         mock_client = self._make_mock_client()
@@ -99,7 +99,7 @@ class TestBaseAgentRun:
         _, kwargs = mock_client.messages.create.call_args
         assert kwargs["model"] == "claude-opus-4-6"
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_returns_first_content_text(self, mock_anthropic_cls):
         """run() must return the text of the first content block in the response."""
         mock_client = self._make_mock_client(text="Claude's response")

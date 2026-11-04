@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.resource.a2a.protocol import A2AMessage, A2APeer, A2AResponse
+from src.ai.a2a.protocol import A2AMessage, A2APeer, A2AResponse
 
 
 class AbstractBaseAgent(BaseModel, ABC):
@@ -87,7 +87,7 @@ class AbstractBaseAgent(BaseModel, ABC):
             KeyError: If peer_name is not in self.peers.
             Exception: Propagates any exception raised by the peer.
         """
-        from src.resource.a2a.router import A2ARouter
+        from src.ai.a2a.router import A2ARouter
 
         router = A2ARouter(peers=self.peers)
         if trace_id:
@@ -117,7 +117,7 @@ class AbstractBaseAgent(BaseModel, ABC):
             KeyError: If peer_name is not in self.peers.
             Exception: Propagates any exception raised by the peer.
         """
-        from src.resource.a2a.router import A2ARouter
+        from src.ai.a2a.router import A2ARouter
 
         router = A2ARouter(peers=self.peers)
         if trace_id:

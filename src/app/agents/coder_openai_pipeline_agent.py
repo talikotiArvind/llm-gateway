@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from src.resource.base_openai import OpenAIBaseAgent
+from src.ai.base_openai import OpenAIBaseAgent
 
 
 class CoderOpenAIPipelineAgent(OpenAIBaseAgent):
@@ -12,7 +12,7 @@ class CoderOpenAIPipelineAgent(OpenAIBaseAgent):
 
     Typical wiring::
 
-        from src.resource.a2a.protocol import A2APeer
+        from src.ai.a2a.protocol import A2APeer
         from src.app.agents.reviewer_claude_agent import ReviewerClaudeAgent
 
         coder = CoderOpenAIPipelineAgent(

@@ -1,6 +1,6 @@
 """OpenAI-backed professional Python coder agent."""
 
-from src.resource.base_openai import BaseAgent
+from src.ai.base_openai import BaseAgent
 from pydantic import Field
 
 class PythonCoderAgent(BaseAgent):

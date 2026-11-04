@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.resource.base_gemini import BaseAgent as GeminiBaseAgent
+from src.ai.base_gemini import BaseAgent as GeminiBaseAgent
 from src.app.agents.python_coder_gemini_agent import PythonCoderGeminiAgent
 
 _EXPECTED_INSTRUCTIONS = (
@@ -70,7 +70,7 @@ class TestPythonCoderGeminiAgentRun(unittest.TestCase):
         mock_genai.GenerativeModel.return_value = mock_model_instance
         return mock_genai
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_delegates_to_base(self, mock_genai: MagicMock) -> None:
         """run() must forward the message unchanged to send_message."""
         wired = self._make_mock_genai("def hello(): print('hello world')")
@@ -82,7 +82,7 @@ class TestPythonCoderGeminiAgentRun(unittest.TestCase):
         mock_chat = mock_genai.GenerativeModel.return_value.start_chat.return_value
         mock_chat.send_message.assert_called_once_with("write hello world")
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_returns_response_text(self, mock_genai: MagicMock) -> None:
         """run() must return the mocked response's text attribute."""
         wired = self._make_mock_genai("def hello(): print('hello world')")
@@ -92,7 +92,7 @@ class TestPythonCoderGeminiAgentRun(unittest.TestCase):
 
         assert result == "def hello(): print('hello world')"
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_configures_genai_with_api_key(self, mock_genai: MagicMock) -> None:
         """genai.configure must be called once with an api_key kwarg."""
         wired = self._make_mock_genai("ok")
@@ -104,7 +104,7 @@ class TestPythonCoderGeminiAgentRun(unittest.TestCase):
         _, kwargs = mock_genai.configure.call_args
         assert "api_key" in kwargs
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_builds_model_with_correct_system_instruction(
         self, mock_genai: MagicMock
     ) -> None:

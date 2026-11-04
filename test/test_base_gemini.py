@@ -1,4 +1,4 @@
-"""Unit tests for src/resource/base_gemini.py."""
+"""Unit tests for src/ai/base_gemini.py."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from pydantic import ValidationError
 
-from src.resource.base_gemini import BaseAgent
+from src.ai.base_gemini import BaseAgent
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +109,7 @@ class TestBaseAgentRun(unittest.TestCase):
     # Tests
     # ------------------------------------------------------------------
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_instantiation_calls_genai_configure_with_api_key(
         self, mock_genai: MagicMock
     ) -> None:
@@ -124,7 +124,7 @@ class TestBaseAgentRun(unittest.TestCase):
         _, kwargs = mock_genai.configure.call_args
         self.assertIn("api_key", kwargs)
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_constructs_generative_model_with_correct_params(
         self, mock_genai: MagicMock
     ) -> None:
@@ -143,7 +143,7 @@ class TestBaseAgentRun(unittest.TestCase):
             system_instruction="System instructions",
         )
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_uses_overridden_model(self, mock_genai: MagicMock) -> None:
         """When a custom model is set, GenerativeModel must receive that model_name."""
         mock_genai_wired = self._make_mock_genai()
@@ -156,7 +156,7 @@ class TestBaseAgentRun(unittest.TestCase):
         _, kwargs = mock_genai.GenerativeModel.call_args
         self.assertEqual(kwargs["model_name"], "gemini-1.5-pro")
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_calls_send_message_with_message(
         self, mock_genai: MagicMock
     ) -> None:
@@ -171,7 +171,7 @@ class TestBaseAgentRun(unittest.TestCase):
         mock_chat = mock_genai.GenerativeModel.return_value.start_chat.return_value
         mock_chat.send_message.assert_called_once_with("What is 2 + 2?")
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_returns_response_text(self, mock_genai: MagicMock) -> None:
         """run() must return the .text attribute of the send_message response."""
         mock_genai_wired = self._make_mock_genai(response_text="Gemini's answer")

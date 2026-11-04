@@ -2,7 +2,7 @@
 
 from unittest.mock import patch, MagicMock
 
-from src.resource.base_claude import BaseAgent as ClaudeBaseAgent
+from src.ai.base_claude import BaseAgent as ClaudeBaseAgent
 from src.app.agents.python_coder_claude_agent import PythonCoderClaudeAgent
 
 
@@ -68,7 +68,7 @@ class TestPythonCoderClaudeAgentRun:
         mock_client.messages.create.return_value = mock_response
         return mock_client
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_returns_claude_output(self, mock_anthropic_cls):
         """run() must return the text produced by the mocked Anthropic client."""
         mock_anthropic_cls.return_value = self._make_mock_client("def hello(): pass")
@@ -77,7 +77,7 @@ class TestPythonCoderClaudeAgentRun:
 
         assert result == "def hello(): pass"
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_sends_default_instructions_as_system_prompt(self, mock_anthropic_cls):
         """The agent's instructions must be passed as the system prompt."""
         mock_client = self._make_mock_client()
@@ -89,7 +89,7 @@ class TestPythonCoderClaudeAgentRun:
         _, kwargs = mock_client.messages.create.call_args
         assert kwargs["system"] == agent.instructions
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_forwards_message_as_user_content(self, mock_anthropic_cls):
         """The input message must be forwarded as a single user-role message."""
         mock_client = self._make_mock_client()

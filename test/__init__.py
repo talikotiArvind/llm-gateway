@@ -1,1 +1,1 @@
-"""Unit test package for src/app and src/resource provider agents."""
+"""Unit test package for src/app and src/ai provider agents."""

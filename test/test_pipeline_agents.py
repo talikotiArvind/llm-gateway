@@ -16,7 +16,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from src.resource.a2a.protocol import A2APeer
+from src.ai.a2a.protocol import A2APeer
 
 
 # ---------------------------------------------------------------------------
@@ -117,13 +117,13 @@ class TestFactCheckerGeminiAgent(unittest.TestCase):
 
     def test_inherits_gemini_base(self):
         """Verify the agent subclasses GeminiBaseAgent."""
-        from src.resource.base_gemini import GeminiBaseAgent
+        from src.ai.base_gemini import GeminiBaseAgent
         from src.app.agents.fact_checker_gemini_agent import FactCheckerGeminiAgent
         self.assertTrue(issubclass(FactCheckerGeminiAgent, GeminiBaseAgent))
 
     def test_inherits_abstract_base(self):
         """Verify the agent subclasses AbstractBaseAgent."""
-        from src.resource.base_agent import AbstractBaseAgent
+        from src.ai.base_agent import AbstractBaseAgent
         from src.app.agents.fact_checker_gemini_agent import FactCheckerGeminiAgent
         self.assertTrue(issubclass(FactCheckerGeminiAgent, AbstractBaseAgent))
 
@@ -147,7 +147,7 @@ class TestFactCheckerGeminiAgent(unittest.TestCase):
         agent = self._make(model="gemini-1.5-pro")
         self.assertEqual(agent.model, "gemini-1.5-pro")
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_calls_send_message(self, mock_genai):
         """Verify run() forwards the input text to the Gemini chat's send_message and returns its text."""
         mock_chat = MagicMock()
@@ -160,7 +160,7 @@ class TestFactCheckerGeminiAgent(unittest.TestCase):
         mock_chat.send_message.assert_called_once_with("Python is widely used.")
         self.assertEqual(result, "VERDICT: True")
 
-    @patch("src.resource.base_gemini.genai")
+    @patch("src.ai.base_gemini.genai")
     def test_run_builds_model_with_correct_params(self, mock_genai):
         """Verify run() builds the GenerativeModel with the agent's model name and instructions."""
         mock_chat = MagicMock()
@@ -216,13 +216,13 @@ class TestAnalystClaudeAgent(unittest.TestCase):
 
     def test_inherits_claude_base(self):
         """Verify the agent subclasses ClaudeBaseAgent."""
-        from src.resource.base_claude import ClaudeBaseAgent
+        from src.ai.base_claude import ClaudeBaseAgent
         from src.app.agents.analyst_claude_agent import AnalystClaudeAgent
         self.assertTrue(issubclass(AnalystClaudeAgent, ClaudeBaseAgent))
 
     def test_inherits_abstract_base(self):
         """Verify the agent subclasses AbstractBaseAgent."""
-        from src.resource.base_agent import AbstractBaseAgent
+        from src.ai.base_agent import AbstractBaseAgent
         from src.app.agents.analyst_claude_agent import AnalystClaudeAgent
         self.assertTrue(issubclass(AnalystClaudeAgent, AbstractBaseAgent))
 
@@ -245,7 +245,7 @@ class TestAnalystClaudeAgent(unittest.TestCase):
         """Verify a custom model passed to the constructor is honored."""
         self.assertEqual(self._make(model="claude-opus-4-8").model, "claude-opus-4-8")
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_no_peers_returns_text(self, mock_anthropic):
         """Verify run() returns the text content from the Anthropic response when there are no peers."""
         mock_anthropic.return_value.messages.create.return_value = (
@@ -254,7 +254,7 @@ class TestAnalystClaudeAgent(unittest.TestCase):
         result = self._make().run("Analyze the market.")
         self.assertEqual(result, "Analysis complete.")
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_passes_instructions_as_system(self, mock_anthropic):
         """Verify run() passes the agent's instructions as the system prompt."""
         mock_anthropic.return_value.messages.create.return_value = (
@@ -327,13 +327,13 @@ class TestReviewerClaudeAgent(unittest.TestCase):
 
     def test_inherits_claude_base(self):
         """Verify the agent subclasses ClaudeBaseAgent."""
-        from src.resource.base_claude import ClaudeBaseAgent
+        from src.ai.base_claude import ClaudeBaseAgent
         from src.app.agents.reviewer_claude_agent import ReviewerClaudeAgent
         self.assertTrue(issubclass(ReviewerClaudeAgent, ClaudeBaseAgent))
 
     def test_inherits_abstract_base(self):
         """Verify the agent subclasses AbstractBaseAgent."""
-        from src.resource.base_agent import AbstractBaseAgent
+        from src.ai.base_agent import AbstractBaseAgent
         from src.app.agents.reviewer_claude_agent import ReviewerClaudeAgent
         self.assertTrue(issubclass(ReviewerClaudeAgent, AbstractBaseAgent))
 
@@ -349,7 +349,7 @@ class TestReviewerClaudeAgent(unittest.TestCase):
         """Verify a custom name passed to the constructor is honored."""
         self.assertEqual(self._make(name="Senior Reviewer").name, "Senior Reviewer")
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_returns_review_text(self, mock_anthropic):
         """Verify run() returns the review text content from the Anthropic response."""
         mock_anthropic.return_value.messages.create.return_value = (
@@ -358,7 +358,7 @@ class TestReviewerClaudeAgent(unittest.TestCase):
         result = self._make().run("def foo(): pass")
         self.assertEqual(result, "APPROVE — clean code.")
 
-    @patch("src.resource.base_claude.Anthropic")
+    @patch("src.ai.base_claude.Anthropic")
     def test_run_forwards_code_as_user_content(self, mock_anthropic):
         """Verify run() forwards the input code as the user message content."""
         mock_anthropic.return_value.messages.create.return_value = (
@@ -419,13 +419,13 @@ class TestCoderOpenAIPipelineAgent(unittest.TestCase):
 
     def test_inherits_openai_base(self):
         """Verify the agent subclasses OpenAIBaseAgent."""
-        from src.resource.base_openai import OpenAIBaseAgent
+        from src.ai.base_openai import OpenAIBaseAgent
         from src.app.agents.coder_openai_pipeline_agent import CoderOpenAIPipelineAgent
         self.assertTrue(issubclass(CoderOpenAIPipelineAgent, OpenAIBaseAgent))
 
     def test_inherits_abstract_base(self):
         """Verify the agent subclasses AbstractBaseAgent."""
-        from src.resource.base_agent import AbstractBaseAgent
+        from src.ai.base_agent import AbstractBaseAgent
         from src.app.agents.coder_openai_pipeline_agent import CoderOpenAIPipelineAgent
         self.assertTrue(issubclass(CoderOpenAIPipelineAgent, AbstractBaseAgent))
 
@@ -448,16 +448,16 @@ class TestCoderOpenAIPipelineAgent(unittest.TestCase):
         """Verify a custom model passed to the constructor is honored."""
         self.assertEqual(self._make(model="gpt-4o-mini").model, "gpt-4o-mini")
 
-    @patch("src.resource.base_openai.Runner")
-    @patch("src.resource.base_openai.Agent")
+    @patch("src.ai.base_openai.Runner")
+    @patch("src.ai.base_openai.Agent")
     def test_run_returns_final_output(self, mock_agent_cls, mock_runner):
         """Verify run() returns the Runner's final_output value."""
         mock_runner.run_sync.return_value = MagicMock(final_output="def fib(n): ...")
         result = self._make().run("Write fibonacci")
         self.assertEqual(result, "def fib(n): ...")
 
-    @patch("src.resource.base_openai.Runner")
-    @patch("src.resource.base_openai.Agent")
+    @patch("src.ai.base_openai.Runner")
+    @patch("src.ai.base_openai.Agent")
     def test_run_creates_agent_with_model(self, mock_agent_cls, mock_runner):
         """Verify run() constructs the underlying Agent with the expected name, instructions, and model."""
         mock_runner.run_sync.return_value = MagicMock(final_output="ok")
@@ -469,8 +469,8 @@ class TestCoderOpenAIPipelineAgent(unittest.TestCase):
             model="gpt-4o",
         )
 
-    @patch("src.resource.base_openai.Runner")
-    @patch("src.resource.base_openai.Agent")
+    @patch("src.ai.base_openai.Runner")
+    @patch("src.ai.base_openai.Agent")
     def test_run_passes_message_to_runner(self, mock_agent_cls, mock_runner):
         """Verify run() passes the constructed agent and input message to Runner.run_sync."""
         mock_instance = MagicMock()

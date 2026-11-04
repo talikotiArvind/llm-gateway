@@ -2,7 +2,7 @@
 
 from unittest.mock import patch, MagicMock
 
-from src.resource.base_openai import BaseAgent as OpenAIBaseAgent
+from src.ai.base_openai import BaseAgent as OpenAIBaseAgent
 from src.app.agents.football_match_analyzer import FootballMatchAnalyzerAgent
 
 
@@ -44,8 +44,8 @@ class TestFootballMatchAnalyzerOverrides:
 class TestFootballMatchAnalyzerRun:
     """Tests for FootballMatchAnalyzerAgent.run() with a mocked OpenAI backend."""
 
-    @patch("src.resource.base_openai.Agent")
-    @patch("src.resource.base_openai.Runner")
+    @patch("src.ai.base_openai.Agent")
+    @patch("src.ai.base_openai.Runner")
     def test_run_returns_backend_output(self, mock_runner, mock_agent_cls):
         """run() must return the Runner's final_output value."""
         mock_runner.run_sync.return_value = MagicMock(final_output="Match analysis result")
@@ -54,8 +54,8 @@ class TestFootballMatchAnalyzerRun:
 
         assert result == "Match analysis result"
 
-    @patch("src.resource.base_openai.Agent")
-    @patch("src.resource.base_openai.Runner")
+    @patch("src.ai.base_openai.Agent")
+    @patch("src.ai.base_openai.Runner")
     def test_run_forwards_message_to_runner(self, mock_runner, mock_agent_cls):
         """The input message must be forwarded unchanged to Runner.run_sync."""
         mock_runner.run_sync.return_value = MagicMock(final_output="output")

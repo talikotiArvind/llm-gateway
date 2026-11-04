@@ -1,10 +1,10 @@
-"""Unit tests for src/resource/base_openai.py."""
+"""Unit tests for src/ai/base_openai.py."""
 
 import pytest
 from unittest.mock import patch, MagicMock
 from pydantic import ValidationError
 
-from src.resource.base_openai import BaseAgent
+from src.ai.base_openai import BaseAgent
 
 
 class TestBaseAgentInstantiation:
@@ -35,8 +35,8 @@ class TestBaseAgentInstantiation:
 class TestBaseAgentRun:
     """Tests for BaseAgent.run() — the OpenAI Agent/Runner SDK is mocked."""
 
-    @patch("src.resource.base_openai.Agent")
-    @patch("src.resource.base_openai.Runner")
+    @patch("src.ai.base_openai.Agent")
+    @patch("src.ai.base_openai.Runner")
     def test_run_creates_agent_with_correct_name_and_instructions(
         self, mock_runner, mock_agent_cls
     ):
@@ -50,8 +50,8 @@ class TestBaseAgentRun:
             name="My Agent", instructions="My instructions", model="gpt-4o"
         )
 
-    @patch("src.resource.base_openai.Agent")
-    @patch("src.resource.base_openai.Runner")
+    @patch("src.ai.base_openai.Agent")
+    @patch("src.ai.base_openai.Runner")
     def test_run_passes_agent_instance_and_message_to_runner(
         self, mock_runner, mock_agent_cls
     ):
@@ -65,8 +65,8 @@ class TestBaseAgentRun:
 
         mock_runner.run_sync.assert_called_once_with(mock_agent_instance, "test message")
 
-    @patch("src.resource.base_openai.Agent")
-    @patch("src.resource.base_openai.Runner")
+    @patch("src.ai.base_openai.Agent")
+    @patch("src.ai.base_openai.Runner")
     def test_run_returns_final_output(self, mock_runner, mock_agent_cls):
         """run() must return Runner.run_sync's final_output value."""
         mock_runner.run_sync.return_value = MagicMock(final_output="Expected response")
