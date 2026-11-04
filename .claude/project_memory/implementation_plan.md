@@ -565,7 +565,7 @@ Per gate also: Code Reviewer verdict APPROVE with risk ≤ MEDIUM (HIGH → huma
 ## 5. Progress tracking
 | Milestone | Tasks | Status | Notes |
 |---|---|---|---|
-| M0 | T01, T02, T03, T04 | pending | |
+| M0 | T01, T02, T03, T04 | in progress | T01 done in worktree t01 (awaiting merge); actionlint not run (not installed); import-linter layer modules not yet created are marked optional `(…)` in pyproject |
 | M1 | T05, T06, T07, T08, T09 | pending | |
 | M2 | T10, T11, T12, T13 | pending | |
 | M3 | T14, T15, T16 | pending | |

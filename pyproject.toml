@@ -1,0 +1,140 @@
+[project]
+name = "switchyard"
+version = "0.1.0"
+description = "Switchyard: multi-tenant, OpenAI-compatible LLM gateway."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2",
+    "pydantic-settings",
+    "httpx",
+    "sqlalchemy[asyncio]>=2",
+    "asyncpg",
+    "alembic",
+    "redis>=5",
+    "typer",
+    "pyyaml",
+    "boto3",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-httpx",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "hypothesis",
+    "respx",
+    "testcontainers[postgres,redis]",
+    "openai",  # e2e client only; never imported by src/
+    "ruff",
+    "mypy",
+    "types-PyYAML",
+    "bandit",
+    "pip-audit",
+    "import-linter",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/switchyard"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+# Agent tooling (hooks, prompts, worktrees) is not product code.
+extend-exclude = [".claude"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "S", "ANN", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# assert is the pytest idiom; subprocess in tests only runs the trusted lint-imports binary.
+"tests/**/*.py" = ["S101", "S603"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = ["--strict-markers"]
+markers = [
+    "unit: fast, isolated tests with no I/O",
+    "contract: adapter/provider contract tests against fakes",
+    "integration: tests that need the compose stack (Postgres, Redis)",
+    "chaos: fault-injection tests that need the compose stack",
+    "security: security tests (auth, tenancy isolation, redaction)",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["switchyard"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_empty = true
+
+[tool.importlinter]
+root_package = "switchyard"
+include_external_packages = true
+exclude_type_checking_imports = true
+
+# Layer modules that do not exist yet are optional (parenthesised) until their task lands.
+[[tool.importlinter.contracts]]
+id = "layers"
+name = "Layers flow downward: api/cli > orchestration > services > data access > domain"
+type = "layers"
+layers = [
+    "switchyard.api | switchyard.cli",
+    "(switchyard.application.gateway_service) : (switchyard.application.execution_service) : (switchyard.application.container) : switchyard.workers",
+    "(switchyard.application.budget_service) : (switchyard.application.cache_service) : (switchyard.application.idempotency_service) : (switchyard.application.admission_service) : (switchyard.application.policy_service) : (switchyard.application.routing_service) : switchyard.security",
+    "switchyard.infrastructure | switchyard.adapters",
+    "switchyard.domain",
+]
+
+[[tool.importlinter.contracts]]
+id = "domain-forbidden"
+name = "Domain is pure: no I/O or framework imports"
+type = "forbidden"
+source_modules = ["switchyard.domain"]
+forbidden_modules = [
+    "httpx",
+    "sqlalchemy",
+    "asyncpg",
+    "redis",
+    "fastapi",
+    "starlette",
+    "opentelemetry",
+    "boto3",
+    "botocore",
+    "socket",
+    "aiofiles",
+    "subprocess",
+]
+
+[[tool.importlinter.contracts]]
+id = "adapters-infrastructure-independent"
+name = "Adapters and infrastructure are independent"
+type = "independence"
+modules = ["switchyard.adapters", "switchyard.infrastructure"]

@@ -120,7 +120,7 @@ worktree assignment and merge protocol.
 | Coding Agent | Task implementation complete, relevant files updated, linter + code-structure + annotations + security-check skills run, and — if part of a `PARALLEL-GROUP-*` — implemented in its own worktree and merged explicitly with no conflicting overwrite |
 | Code Reviewer | `.claude/project_memory/review_log.md` appended with metrics + recommendation + risk level (LOW/MEDIUM/HIGH) |
 | Code Refactor | Refactor evaluation logged + accepted changes applied (or explicit rejection reasoning); if risk is still HIGH after refactor, escalated to human instead of declared done |
-| Unit Test | `test/` coverage-added/updated for changed modules, deterministic test behavior verified, and expected behavior derived from `requirements.md`/`design.md` before reading the implementation (spec divergence, if any, reported — not silently matched) |
+| Unit Test | `tests/` coverage-added/updated for changed modules, deterministic test behavior verified, and expected behavior derived from `requirements.md`/`design.md` before reading the implementation (spec divergence, if any, reported — not silently matched) |
 | metrics skill | `.claude/project_memory/metrics.md` refreshed with current quality values |
 | MkDocs Agent | `mkdocs build --strict` passes and docs output is generated |
 | Cleaner | Artefact cleanup summary printed (`Deleted N items...` or tidy message) |

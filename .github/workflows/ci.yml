@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format
+        run: uv run ruff format --check .
+
+      - name: Mypy
+        run: uv run mypy src tests
+
+      - name: Import contracts
+        run: uv run lint-imports
+
+      - name: Unit and contract tests
+        run: >-
+          uv run pytest -m "unit or contract"
+          --cov=switchyard --cov-branch --cov-report=term --cov-report=xml
+
+      - name: Branch coverage >= 75%
+        run: |
+          uv run python - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET  # noqa: S405 - parses our own coverage.xml
+
+          root = ET.parse("coverage.xml").getroot()  # noqa: S314
+          branches_valid = int(root.get("branches-valid", "0"))
+          rate = float(root.get("branch-rate", "1")) if branches_valid else 1.0
+          print(f"branch coverage: {rate:.2%} ({branches_valid} branches)")
+          sys.exit(0 if rate >= 0.75 else 1)
+          PY
+
+      - name: Bandit
+        run: uv run bandit -q -r src
+
+      - name: Pip audit
+        run: uv run pip-audit
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: checks
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: switchyard
+          POSTGRES_PASSWORD: switchyard
+          POSTGRES_DB: switchyard
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U switchyard"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Single Alembic head
+        if: hashFiles('alembic.ini') != ''
+        run: test "$(uv run alembic heads | grep -c '(head)')" -eq 1
+
+      - name: Integration and security tests
+        # Exit code 5 = no tests collected yet; treat as success until suites land.
+        run: uv run pytest -m "integration or security" || [ $? -eq 5 ]
