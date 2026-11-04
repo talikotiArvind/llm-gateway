@@ -55,12 +55,10 @@ jobs:
       # src/. Ruff (a separate step) still lints test files for real bugs — this
       # exclusion is type-annotation strictness only.
       #
-      # The exclusion matches a `test`/`tests` path segment anywhere (not just at
-      # the repo root) so nested suites like `rag_pipeline/tests/` are excluded
-      # too — the original `^(test|tests)/` anchor missed those.
+      # The exclusion matches a `test` path segment anywhere, not just at the repo root.
       - name: Mypy on changed files (blocking)
         run: |
-          CHANGED=$(git diff --name-only "${{ steps.diff.outputs.base }}" HEAD -- '*.py' | grep -v -E '(^|/)(test|tests)/' | tr '\n' ' ')
+          CHANGED=$(git diff --name-only "${{ steps.diff.outputs.base }}" HEAD -- '*.py' | grep -v -E '(^|/)test/' | tr '\n' ' ')
           if [ -z "$CHANGED" ]; then
             echo "No changed non-test Python files."
           else
