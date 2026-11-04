@@ -72,7 +72,7 @@ def main() -> None:
         sys.exit(0)
     # Test files always need full reads — expected by unit-test agent
     norm = normalize_path(file_path_str)
-    if file_path.name.startswith("test_") or "/tests/" in norm or "/test/" in norm:
+    if file_path.name.startswith("test_") or "/test/" in norm:
         sys.exit(0)
 
     index = parse_index(INDEX_PATH)

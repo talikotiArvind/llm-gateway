@@ -84,7 +84,7 @@ def main() -> None:
     if file_path.suffix != ".py":
         sys.exit(0)
     norm = normalize_path(file_path_str)
-    if file_path.name.startswith("test_") or "/tests/" in norm or "/test/" in norm:
+    if file_path.name.startswith("test_") or "/test/" in norm:
         sys.exit(0)
     if ".claude" in str(file_path):
         sys.exit(0)

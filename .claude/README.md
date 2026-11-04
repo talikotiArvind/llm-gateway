@@ -34,5 +34,5 @@ python .claude/hooks/validate_pipeline.py
 
 ## Conventions
 - Use `PARALLEL-GROUP-*` labels consistently in plans.
-- Prefer `test/` as the default test directory for new tests. `tests/` also exists (legacy A2A protocol suites) — both directories run in CI via `test/unit_test.sh`; `tests/` is not deprecated, just not where new coding-agent tests should land.
+- Use `test/` as the test directory for new tests; it runs in CI via `test/unit_test.sh`.
 - Keep `.claude/settings.local.json` machine-agnostic (repo-relative paths only).

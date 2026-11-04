@@ -39,7 +39,7 @@ You are a Project Hygiene Agent. Your sole job is to delete residual artefacts t
 ## What You NEVER Delete
 
 - `src/` — all source code
-- `test/`, `tests/` — all test files (both directories hold real suites in this repo)
+- `test/` — all test files
 - `docs/` — MkDocs source pages
 - `mkdocs.yml` — documentation config
 - `.claude/` — project memory, hooks, agents, skills
