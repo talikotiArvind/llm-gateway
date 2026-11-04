@@ -35,10 +35,10 @@
 |---|---|---|
 | S1 | `uv sync --frozen` | lock file unchanged, no resolver error |
 | S2 | `uv run ruff check . && uv run ruff format --check .` | 0 violations |
-| S3 | `uv run mypy src tests` | 0 errors (strict, from `pyproject.toml`) |
+| S3 | `uv run mypy src tests fake_provider` | 0 errors (strict, from `pyproject.toml`) |
 | S4 | `uv run lint-imports` | all contracts KEPT (layers, domain-forbidden, adapters ⟂ infrastructure) |
-| S5 | `uv run pytest -m "unit or contract" --cov=switchyard --cov-branch` | all pass; line ≥ 80 %, branch ≥ 75 % (`fail_under` in pyproject) |
-| S6 | `uv run bandit -q -r src && uv run pip-audit` | no HIGH/MEDIUM findings; no known vulns |
+| S5 | `uv run pytest -m "unit or contract" --cov --cov-branch` (sources `switchyard` + `fake_provider` from pyproject) | all pass; line ≥ 80 %, branch ≥ 75 % (`fail_under` in pyproject) |
+| S6 | `uv run bandit -q -r src fake_provider && uv run pip-audit` | no HIGH/MEDIUM findings; no known vulns |
 | S7 | Skills `linter`, `code-structure`, `annotations`, `security-check` | clean, 100 % annotation coverage |
 | S8 | `git diff --name-only main...HEAD` | touches only the files in the task's **Files** row (+ project-memory files) |
 
@@ -185,7 +185,7 @@ Steps:
 |---|---|
 | Group | PARALLEL-GROUP-M0-B · worktree `.claude/worktrees/t04/` · Merge order **3** · Size **S** |
 | Depends on | T01 |
-| Files | `docs/adr/0001-openai-compatible-api-canonical-schema.md`, `docs/adr/0002-ecs-fargate.md`, `docs/adr/README.md` |
+| Files | `docs/adr/0001-openai-compatible-api-and-canonical-schema.md`, `docs/adr/0002-runtime-ecs-fargate.md`, `docs/adr/README.md` |
 | Covers | FR-109 (ADR-001, ADR-002) |
 | Acceptance | both ADRs have Status / Context / Decision / Consequences / Alternatives sections; README lists ADR 001–010 with 001/002 `accepted`, the rest `planned`; every relative link target exists |
 | Test dirs | none |

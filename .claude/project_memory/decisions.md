@@ -114,3 +114,9 @@ Format:
 - Rejected YAML read directly at startup: no runtime activation or rollback without a deploy, and no history.
 - Rejected mutable in-place policy rows: no audit trail and no way to tie a ledger row to the policy that produced it.
 **Consequences**: Replicas poll or are notified of the active version; there is a short window where replicas differ (each request still records the version it used). Rollback runbook = re-activate previous version. Policy tables are tenant-scoped (ADR-008).
+
+## 2026-11-05 — ADR-000a Layer tiers refined after M0 review
+**Decision**: The import-linter `layers` contract has these tiers, top to bottom: api | cli → orchestration (gateway_service : execution_service : container : workers) → services (`*_service`, mutually independent `|`) → service-support (circuit_breaker | retry_budget | retry | security) → data access (infrastructure | adapters, independent) → application.models → domain. `application.retry` (backoff/jitter helpers) is added to the design under T17. A unit test fails if any `switchyard.application.*` module is missing from the contract.
+**Context**: M0 review found services could import each other cyclically and new modules could go unlayered; services need CircuitBreaker and TenantContext.
+**Rationale**: Independence between services keeps them unit-testable in isolation; a support tier gives shared policy objects a home without letting services depend on each other. Rejected: one flat `:`-joined service layer (allows cycles); moving CircuitBreaker into infrastructure (it is policy logic, not I/O).
+**Consequences**: Layer skipping (e.g. api → domain) remains allowed, as in the original design. Redaction in logs uses dependency inversion: `Telemetry` (infrastructure) accepts a `LogRecordFilter` Protocol defined in `domain`; `container` injects `Redactor` (security). Infrastructure never imports security. Fixes the upward import in design Part 02 §1.10.

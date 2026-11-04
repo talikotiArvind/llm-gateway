@@ -12,7 +12,7 @@ import pytest
 from fake_provider.app import MODEL_IDS, create_app
 from fake_provider.streaming import DONE_FRAME, MALFORMED_FRAME, StreamDroppedError
 
-from .support import FakeClock, HangCalledError
+from .support import FakeClock
 
 CHAT_PATH = "/v1/chat/completions"
 BODY: dict[str, Any] = {"model": "fake-model", "messages": [{"role": "user", "content": "hi"}]}
@@ -136,15 +136,34 @@ class ErrorInjectionTest(FakeProviderTestCase):
 class StreamFaultTest(FakeProviderTestCase):
     """Hang, drop and malformed-chunk knobs through the HTTP surface."""
 
-    async def test_hang_before_headers_sends_no_first_byte(self) -> None:
+    async def test_hang_before_headers_ends_with_504_at_cap(self) -> None:
         for stream in (False, True):
-            with self.subTest(stream=stream), self.assertRaises(HangCalledError):
-                await self._chat({"hang": "true"}, stream=stream)
-        self.assertEqual(2, self.clock.hangs)
+            with self.subTest(stream=stream):
+                self.clock.elapsed = 0.0
+                response = await self._chat({"hang": "true", "hang_max_s": "2"}, stream=stream)
+                self.assertEqual(504, response.status_code)
+                self.assertEqual("server_error", response.json()["error"]["type"])
+                self.assertAlmostEqual(2.0, self.clock.elapsed)
 
     async def test_non_stream_hangs_for_any_hang_mode(self) -> None:
-        with self.assertRaises(HangCalledError):
-            await self._chat({"hang": "mid_stream"})
+        response = await self._chat({"hang": "mid_stream", "hang_max_s": "1"})
+        self.assertEqual(504, response.status_code)
+        self.assertAlmostEqual(1.0, self.clock.elapsed)
+
+    async def test_hang_default_cap_is_bounded(self) -> None:
+        response = await self._chat({"hang": "true"})
+        self.assertEqual(504, response.status_code)
+        self.assertAlmostEqual(300.0, self.clock.elapsed)
+        self.assertLessEqual(max(self.clock.sleeps), 0.1)
+
+    async def test_mid_stream_hang_ends_and_releases_connection(self) -> None:
+        headers = {"x-fake-hang": "mid_stream", "x-fake-hang-max-s": "1"}
+        async with self._client(raise_app_exceptions=False) as client:
+            response = await client.post(CHAT_PATH, json={**BODY, "stream": True}, headers=headers)
+            stats = (await client.get("/admin/stats")).json()
+        self.assertEqual(1, len(self._frames(response)))
+        self.assertEqual(0, stats["open_connections"])
+        self.assertEqual(1, stats["closed_connections"])
 
     async def test_drop_after_chunks_has_no_done(self) -> None:
         headers = {"x-fake-drop-after-chunks": "3"}
@@ -189,6 +208,13 @@ class AdminAndValidationTest(FakeProviderTestCase):
         async with self._client() as client:
             response = await client.post(CHAT_PATH, json={"model": "fake-model", "messages": []})
         self.assertEqual(400, response.status_code)
+
+    async def test_invalid_knob_is_counted_as_400(self) -> None:
+        async with self._client() as client:
+            response = await client.post(CHAT_PATH, json=BODY, headers={"x-fake-chunks": "0"})
+            stats = (await client.get("/admin/stats")).json()
+        self.assertEqual(400, response.status_code)
+        self.assertEqual({"400": 1}, stats["by_status"])
 
     async def test_stats_count_requests_statuses_and_connections(self) -> None:
         await self._chat()

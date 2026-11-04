@@ -2,7 +2,8 @@
 # Switchyard gateway image: uv builder stage + slim non-root runtime.
 
 FROM python:3.12-slim AS builder
-COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /usr/local/bin/uv
+# Keep in step with UV_VERSION in .github/workflows/ci.yml (uv.lock revision 3 needs uv 0.12.x).
+COPY --from=ghcr.io/astral-sh/uv:0.12.21 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never

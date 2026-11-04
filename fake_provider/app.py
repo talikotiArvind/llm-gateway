@@ -18,18 +18,23 @@ from fake_provider.streaming import (
     Clock,
     CompletionBuilder,
     CompletionPlan,
+    DisconnectProbe,
+    HangWaiter,
     SystemClock,
+    never_disconnected,
 )
 
 MODEL_IDS = ("fake-model", "fake-model-fallback", "fake-model-mini")
 OWNER = "switchyard-fake"
 DEFAULT_429_RETRY_AFTER_S = 1.0
+HANG_EXPIRED_STATUS = 504
 _ERROR_TYPES = {
     400: ("invalid_request_error", "invalid_request"),
     401: ("authentication_error", "invalid_api_key"),
     429: ("rate_limit_error", "rate_limit_exceeded"),
     500: ("server_error", "internal_error"),
     503: ("server_error", "service_unavailable"),
+    504: ("server_error", "upstream_timeout"),
     529: ("overloaded_error", "overloaded"),
 }
 KnobPatch = Annotated[dict[str, Any], Body()]
@@ -101,17 +106,33 @@ class CompletionService:
         self._stats = stats
         self._errors = errors
         self._builder = CompletionBuilder()
-        self._streamer = ChunkStreamer(self._builder, clock)
+        self._waiter = HangWaiter(clock)
+        self._streamer = ChunkStreamer(self._builder, clock, self._waiter)
 
-    async def handle(self, request: ChatCompletionRequest, headers: Mapping[str, str]) -> Response:
-        """Return the completion (JSON or SSE) or an injected error."""
+    async def handle(
+        self,
+        request: ChatCompletionRequest,
+        headers: Mapping[str, str],
+        disconnected: DisconnectProbe = never_disconnected,
+    ) -> Response:
+        """Return the completion (JSON or SSE) or an injected error.
+
+        A hang before headers ends with a 504 once the client disconnects or
+        ``hang_max_s`` elapses, so no handler is ever parked forever.
+        """
         self._stats.requests += 1
-        knobs = self._resolver.resolve(headers)
+        try:
+            knobs = self._resolver.resolve(headers)
+        except KnobError:
+            self._stats.by_status[400] += 1
+            raise
         await self._clock.sleep(knobs.latency_ms / 1000)
         if knobs.hang is not HangMode.NONE and (
             knobs.hang is HangMode.BEFORE_HEADERS or not request.stream
         ):
-            await self._clock.hang()
+            await self._waiter.wait(knobs.hang_max_s, disconnected)
+            message = f"fake provider hang ended after at most {knobs.hang_max_s:g}s"
+            return self._record(self._errors.respond(HANG_EXPIRED_STATUS, message))
         injected = self._injected_status(knobs)
         if injected is not None:
             return self._record(self._error_for(injected, knobs))
@@ -119,7 +140,7 @@ class CompletionService:
             request.model, request.messages, request.first_tool_name(), knobs, self._clock.now()
         )
         if request.stream:
-            return self._record(self._stream_response(plan))
+            return self._record(self._stream_response(plan, disconnected))
         await self._clock.sleep(knobs.ttft_ms / 1000)
         return self._record(JSONResponse(self._builder.completion(plan)))
 
@@ -137,16 +158,20 @@ class CompletionService:
             retry_after = None
         return self._errors.respond(status, f"fake provider injected HTTP {status}", retry_after)
 
-    def _stream_response(self, plan: CompletionPlan) -> StreamingResponse:
+    def _stream_response(
+        self, plan: CompletionPlan, disconnected: DisconnectProbe
+    ) -> StreamingResponse:
         headers = {"Cache-Control": "no-cache"}
         return StreamingResponse(
-            self._tracked(plan), media_type="text/event-stream", headers=headers
+            self._tracked(plan, disconnected), media_type="text/event-stream", headers=headers
         )
 
-    async def _tracked(self, plan: CompletionPlan) -> AsyncIterator[str]:
+    async def _tracked(
+        self, plan: CompletionPlan, disconnected: DisconnectProbe
+    ) -> AsyncIterator[str]:
         self._stats.open_connections += 1
         try:
-            async for frame in self._streamer.stream(plan):
+            async for frame in self._streamer.stream(plan, disconnected):
                 yield frame
         finally:
             self._stats.open_connections -= 1
@@ -232,7 +257,7 @@ def create_app(clock: Clock | None = None) -> FastAPI:
     @app.post("/v1/chat/completions")
     async def chat_completions(body: ChatCompletionRequest, request: Request) -> Response:
         """OpenAI ``POST /v1/chat/completions``."""
-        return await service.handle(body, request.headers)
+        return await service.handle(body, request.headers, request.is_disconnected)
 
     @app.get("/v1/models")
     async def list_models() -> dict[str, Any]:

@@ -1,0 +1,29 @@
+# Gateway build context (repo root). The Dockerfile COPYs only pyproject.toml, uv.lock,
+# README.md and src/; everything else stays out of the context sent to the daemon.
+.git
+.github
+.claude
+.venv
+venv
+env
+.env
+.env.*
+**/__pycache__
+**/*.py[cod]
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.hypothesis
+.import_linter_cache
+.coverage
+.coverage.*
+coverage.xml
+htmlcov
+site
+build
+dist
+*.egg-info
+tests
+docs
+infra
+fake_provider

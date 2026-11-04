@@ -90,7 +90,8 @@ markers = [
 
 [tool.coverage.run]
 branch = true
-source = ["switchyard"]
+# fake_provider is test tooling but ~600 lines of fault logic; it is measured and gated too.
+source = ["switchyard", "fake_provider"]
 
 [tool.coverage.report]
 fail_under = 80
@@ -103,6 +104,11 @@ include_external_packages = true
 exclude_type_checking_imports = true
 
 # Layer modules that do not exist yet are optional (parenthesised) until their task lands.
+# Every module under switchyard/application/ must be named here (tests/unit/test_layering.py).
+# Service logic is split in two tiers (design Part 02 section 1): the *_service modules never
+# import each other (independent, "|"), but they do import the support tier below them:
+# routing_service reads CircuitBreaker health, and services take security.TenantContext.
+# application.models holds typed DTOs built only from domain types, so every layer may use it.
 [[tool.importlinter.contracts]]
 id = "layers"
 name = "Layers flow downward: api/cli > orchestration > services > data access > domain"
@@ -110,8 +116,10 @@ type = "layers"
 layers = [
     "switchyard.api | switchyard.cli",
     "(switchyard.application.gateway_service) : (switchyard.application.execution_service) : (switchyard.application.container) : switchyard.workers",
-    "(switchyard.application.budget_service) : (switchyard.application.cache_service) : (switchyard.application.idempotency_service) : (switchyard.application.admission_service) : (switchyard.application.policy_service) : (switchyard.application.routing_service) : switchyard.security",
+    "(switchyard.application.budget_service) | (switchyard.application.cache_service) | (switchyard.application.idempotency_service) | (switchyard.application.admission_service) | (switchyard.application.policy_service) | (switchyard.application.routing_service)",
+    "(switchyard.application.circuit_breaker) | (switchyard.application.retry_budget) | (switchyard.application.retry) | switchyard.security",
     "switchyard.infrastructure | switchyard.adapters",
+    "(switchyard.application.models)",
     "switchyard.domain",
 ]
 

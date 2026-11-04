@@ -64,6 +64,36 @@ class SettingsTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Settings(not_a_field=1)  # type: ignore[call-arg]
 
+    def test_unknown_prefixed_env_var_rejected(self) -> None:
+        with self.assertRaises(ValidationError) as ctx:
+            self._build(SWITCHYARD_DEFAULT_RMP="50")
+        self.assertIn("SWITCHYARD_DEFAULT_RMP", str(ctx.exception))
+
+    def test_unknown_env_vars_listed_sorted(self) -> None:
+        with self.assertRaises(ValidationError) as ctx:
+            self._build(SWITCHYARD_ZETA="1", SWITCHYARD_ALPHA="1", SWITCHYARD_AWS_REGION="x")
+        self.assertIn("SWITCHYARD_ALPHA, SWITCHYARD_ZETA", str(ctx.exception))
+
+    def test_unknown_env_var_check_is_case_insensitive(self) -> None:
+        with self.assertRaises(ValidationError):
+            self._build(switchyard_bogus="1")
+
+    def test_known_env_var_in_lower_case_accepted(self) -> None:
+        self.assertEqual(7, self._build(switchyard_default_rpm="7").default_rpm)
+
+    def test_reserved_provider_key_env_vars_allowed(self) -> None:
+        settings = self._build(
+            SWITCHYARD_PROVIDER_KEY_OPENAI="sk-test", SWITCHYARD_SECRETS_BACKEND="env"
+        )
+        self.assertEqual("env", settings.secrets_backend)
+
+    def test_unknown_env_var_rejected_for_kwargs_construction(self) -> None:
+        with (
+            patch.dict(os.environ, {"SWITCHYARD_BOGUS": "1"}, clear=True),
+            self.assertRaises(ValidationError),
+        ):
+            Settings(default_rpm=5)
+
     def test_settings_are_immutable(self) -> None:
         settings = self._build()
         with self.assertRaises(ValidationError):

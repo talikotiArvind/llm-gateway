@@ -13,6 +13,8 @@ HEADER_PREFIX = "x-fake-"
 SUPPORTED_ERROR_STATUSES = frozenset({400, 401, 429, 500, 503, 529})
 DEFAULT_TEXT = "Hello from the Switchyard fake provider. This reply is deterministic."
 MAX_CHUNKS = 1_000
+DEFAULT_HANG_MAX_S = 300.0  # every hang ends: a real server never cancels a stalled handler
+MAX_HANG_S = 3_600.0
 _TRUE_VALUES = frozenset({"true", "1", "yes", "on"})
 _FALSE_VALUES = frozenset({"false", "0", "no", "off", ""})
 
@@ -22,7 +24,7 @@ class KnobError(ValueError):
 
 
 class HangMode(StrEnum):
-    """Where the provider stalls until the client disconnects."""
+    """Where the provider stalls until the client disconnects or ``hang_max_s`` elapses."""
 
     NONE = "none"
     BEFORE_HEADERS = "before_headers"
@@ -42,6 +44,7 @@ class FakeKnobs(BaseModel):
     error_status: int = 503
     retry_after_s: float | None = Field(default=None, ge=0.0)
     hang: HangMode = HangMode.NONE
+    hang_max_s: float = Field(default=DEFAULT_HANG_MAX_S, gt=0.0, le=MAX_HANG_S)
     drop_after_chunks: int | None = Field(default=None, ge=0)
     malformed_at_chunk: int | None = Field(default=None, ge=0)
     usage: bool = True
@@ -124,7 +127,12 @@ class KnobResolver:
 
 
 class RngPool:
-    """One ``random.Random`` per seed, so a request sequence replays identically."""
+    """One ``random.Random`` per seed, so a request sequence replays identically.
+
+    Streams are process-global per seed and seeded RNGs are used for fault injection, not
+    crypto. Replay is deterministic only for sequential requests: concurrent requests with
+    the same seed interleave their draws.
+    """
 
     def __init__(self) -> None:
         self._by_seed: dict[int, random.Random] = {}
@@ -132,7 +140,7 @@ class RngPool:
     def for_seed(self, seed: int) -> random.Random:
         """Return the RNG stream for ``seed``, creating it on first use."""
         if seed not in self._by_seed:
-            self._by_seed[seed] = random.Random(seed)  # noqa: S311  # nosec B311 - fault injection, not crypto
+            self._by_seed[seed] = random.Random(seed)  # noqa: S311  # nosec B311
         return self._by_seed[seed]
 
     def reset(self) -> None:

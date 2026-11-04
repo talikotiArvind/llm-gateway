@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: switchyard
       POSTGRES_DB: switchyard
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pg-data:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +21,7 @@ services:
   redis:
     image: redis:7
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -38,7 +38,9 @@ services:
       - "4318:4318"
       - "13133:13133"
     healthcheck:
-      # The contrib image is distroless (no shell/curl); the binary validates its own config.
+      # The contrib image is distroless (no shell/curl), so this only proves the config is valid,
+      # not that the collector is live. Accepted for local dev: the gateway exports async and
+      # never blocks on the collector.
       test: ["CMD", "/otelcol-contrib", "validate", "--config=/etc/otelcol/collector.yaml"]
       interval: 10s
       timeout: 5s

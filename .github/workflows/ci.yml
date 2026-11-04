@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Keep in step with the uv image tag in Dockerfile (uv.lock revision 3 needs uv 0.12.x).
+  UV_VERSION: "0.12.21"
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -22,6 +26,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
         with:
+          version: ${{ env.UV_VERSION }}
           python-version: "3.12"
           enable-cache: true
 
@@ -43,7 +48,7 @@ jobs:
       - name: Unit and contract tests
         run: >-
           uv run pytest -m "unit or contract"
-          --cov=switchyard --cov-branch --cov-report=term --cov-report=xml
+          --cov --cov-branch --cov-report=term --cov-report=xml
 
       - name: Branch coverage >= 75%
         run: |
@@ -90,6 +95,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
         with:
+          version: ${{ env.UV_VERSION }}
           python-version: "3.12"
           enable-cache: true
 
@@ -102,4 +108,39 @@ jobs:
 
       - name: Integration and security tests
         # Exit code 5 = no tests collected yet; treat as success until suites land.
+        # TODO(2026-11-05): drop `|| [ $? -eq 5 ]` once T14 lands integration tests, so a marker
+        # typo that deselects every test cannot pass silently.
         run: uv run pytest -m "integration or security" || [ $? -eq 5 ]
+
+  compose-smoke:
+    # M0 exit gate: both images build and the stack comes up healthy (/healthz, fake /v1/models).
+    runs-on: ubuntu-latest
+    needs: checks
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose file
+        run: docker compose config -q
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Start stack
+        run: >-
+          docker compose up -d --wait --wait-timeout 180
+          gateway postgres redis otel-collector fake-provider
+
+      - name: Gateway /healthz
+        run: curl -fsS --retry 5 --retry-connrefused --retry-delay 2 http://localhost:8080/healthz
+
+      - name: Fake provider /v1/models
+        run: curl -fsS --retry 5 --retry-connrefused --retry-delay 2 http://localhost:9000/v1/models
+
+      - name: Dump logs
+        if: always()
+        run: docker compose logs --no-color --timestamps
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

@@ -1,0 +1,7 @@
+# Fake provider build context (fake_provider/): only the package sources are copied.
+Dockerfile
+.dockerignore
+**/__pycache__
+**/*.py[cod]
+.env
+.env.*

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import unittest
 from unittest.mock import AsyncMock, patch
@@ -16,11 +15,13 @@ from fake_provider.streaming import (
     ChunkStreamer,
     CompletionBuilder,
     CompletionPlan,
+    HangWaiter,
     StreamDroppedError,
     SystemClock,
+    never_disconnected,
 )
 
-from .support import FakeClock, HangCalledError
+from .support import FakeClock
 
 MESSAGES = [{"role": "user", "content": "hi there"}]
 
@@ -98,7 +99,7 @@ class ChunkStreamerTest(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:
         self.clock = FakeClock()
-        self.streamer = ChunkStreamer(CompletionBuilder(), self.clock)
+        self.streamer = ChunkStreamer(CompletionBuilder(), self.clock, HangWaiter(self.clock))
 
     async def _collect(self, plan: CompletionPlan) -> list[str]:
         return [frame async for frame in self.streamer.stream(plan)]
@@ -132,19 +133,59 @@ class ChunkStreamerTest(unittest.IsolatedAsyncioTestCase):
             json.loads(frames[2][len("data: ") :])
         self.assertEqual(DONE_FRAME, frames[-1])
 
-    async def test_hang_before_first_chunk(self) -> None:
+    async def test_hang_before_first_chunk_ends_at_cap_without_done(self) -> None:
         received: list[str] = []
-        with self.assertRaises(HangCalledError):
-            async for frame in self.streamer.stream(_plan(hang=HangMode.BEFORE_FIRST_CHUNK)):
+        plan = _plan(hang=HangMode.BEFORE_FIRST_CHUNK, hang_max_s=3)
+        with self.assertRaises(StreamDroppedError):
+            async for frame in self.streamer.stream(plan):
                 received.append(frame)
         self.assertEqual([], received)
+        self.assertAlmostEqual(3.0, self.clock.elapsed)
 
-    async def test_hang_mid_stream(self) -> None:
+    async def test_hang_mid_stream_ends_on_disconnect(self) -> None:
         received: list[str] = []
-        with self.assertRaises(HangCalledError):
-            async for frame in self.streamer.stream(_plan(hang=HangMode.MID_STREAM)):
+        disconnected = AsyncMock(side_effect=[False, False, True])
+        plan = _plan(hang=HangMode.MID_STREAM)
+        with self.assertRaises(StreamDroppedError):
+            async for frame in self.streamer.stream(plan, disconnected):
                 received.append(frame)
         self.assertEqual(1, len(received))
+        self.assertEqual(3, disconnected.await_count)
+        self.assertAlmostEqual(0.2, self.clock.elapsed)
+
+
+@pytest.mark.unit
+class HangWaiterTest(unittest.IsolatedAsyncioTestCase):
+    """Hangs poll for a disconnect and always end by ``max_s``."""
+
+    def setUp(self) -> None:
+        self.clock = FakeClock()
+        self.waiter = HangWaiter(self.clock, poll_interval_s=0.5)
+
+    async def test_returns_false_when_cap_elapses(self) -> None:
+        self.assertFalse(await self.waiter.wait(1.2, never_disconnected))
+        self.assertEqual([0.5, 0.5], self.clock.sleeps[:2])
+        self.assertAlmostEqual(0.2, self.clock.sleeps[2])
+        self.assertAlmostEqual(1.2, self.clock.elapsed)
+
+    async def test_returns_true_on_disconnect_without_sleeping(self) -> None:
+        disconnected = AsyncMock(return_value=True)
+        self.assertTrue(await self.waiter.wait(10, disconnected))
+        self.assertEqual([], self.clock.sleeps)
+
+    async def test_returns_true_after_polling(self) -> None:
+        disconnected = AsyncMock(side_effect=[False, True])
+        self.assertTrue(await self.waiter.wait(10, disconnected))
+        self.assertEqual([0.5], self.clock.sleeps)
+
+    async def test_rejects_non_positive_arguments(self) -> None:
+        with self.assertRaises(ValueError):
+            HangWaiter(self.clock, poll_interval_s=0)
+        with self.assertRaises(ValueError):
+            await self.waiter.wait(0, never_disconnected)
+
+    async def test_never_disconnected_probe(self) -> None:
+        self.assertFalse(await never_disconnected())
 
 
 @pytest.mark.unit
@@ -157,9 +198,9 @@ class SystemClockTest(unittest.IsolatedAsyncioTestCase):
             await SystemClock().sleep(0.25)
         fake_sleep.assert_awaited_once_with(0.25)
 
-    async def test_hang_waits_until_cancelled(self) -> None:
-        with self.assertRaises(TimeoutError):
-            await asyncio.wait_for(SystemClock().hang(), timeout=0.01)
+    def test_monotonic_delegates_to_time(self) -> None:
+        with patch("fake_provider.streaming.time.monotonic", return_value=42.0):
+            self.assertEqual(42.0, SystemClock().monotonic())
 
     def test_now_is_positive(self) -> None:
         self.assertGreater(SystemClock().now(), 0)

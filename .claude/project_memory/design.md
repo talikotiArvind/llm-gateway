@@ -10,6 +10,7 @@ Reconciliations applied at assembly:
 - Late settlement after expiry appends a `late_settlement` ledger row with the real cost (never dropped).
 - Alembic history strictly linear; 0005 re-pointed to 0004 at the group-O merge.
 - Branch grouping changes vs the confirmed table: see Part 04 "Collisions found and fixes".
+- Layer tiers refined after the M0 review (ADR-000a in decisions.md): services are mutually independent; a service-support tier (circuit_breaker | retry_budget | retry | security) sits below them; `application.models` sits just above domain; `Telemetry` gets redaction via a domain `LogRecordFilter` Protocol injected by `container` (no infrastructure → security import).
 
 # Design naming contract (shared by all design-part writers)
 

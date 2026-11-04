@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AnyUrl, Field, PositiveInt
+from pydantic import AnyUrl, Field, PositiveInt, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_MAX_BODY_BYTES = 1_048_576  # OQ-05: 1 MiB, larger bodies get 413
@@ -14,10 +15,17 @@ DEFAULT_MAX_TOOL_PAYLOAD_BYTES = 65_536  # OQ-05: 64 KiB
 DEFAULT_RPM = 600
 DEFAULT_TPM = 200_000
 DEFAULT_CONCURRENCY = 20
+ENV_PREFIX = "SWITCHYARD_"
+# Read directly by other components, not by Settings: the "env" secrets backend.
+RESERVED_ENV_PREFIXES = ("SWITCHYARD_PROVIDER_KEY_",)
 
 
 class Settings(BaseSettings):
     """Typed gateway settings; invalid or unknown values fail at construction.
+
+    Unknown ``SWITCHYARD_*`` environment variables are rejected too (``extra="forbid"`` only
+    covers init kwargs), so a typo such as ``SWITCHYARD_DEFAULT_RMP`` cannot silently fall back
+    to a default. ``RESERVED_ENV_PREFIXES`` are exempt.
 
     Only fields that need no I/O live here for now. Database/Redis fields are added
     by T14 and API-key HMAC fields by T21.
@@ -25,7 +33,7 @@ class Settings(BaseSettings):
 
     # No env_file: production config comes only from the process environment.
     model_config = SettingsConfigDict(
-        env_prefix="SWITCHYARD_",
+        env_prefix=ENV_PREFIX,
         extra="forbid",
         frozen=True,
     )
@@ -43,3 +51,18 @@ class Settings(BaseSettings):
     default_rpm: PositiveInt = DEFAULT_RPM
     default_tpm: PositiveInt = DEFAULT_TPM
     default_concurrency: PositiveInt = DEFAULT_CONCURRENCY
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_unknown_env(cls, data: object) -> object:
+        unknown = sorted(name for name in os.environ if cls._is_unknown_env(name))
+        if unknown:
+            raise ValueError(f"unknown {ENV_PREFIX}* environment variable(s): {', '.join(unknown)}")
+        return data
+
+    @classmethod
+    def _is_unknown_env(cls, name: str) -> bool:
+        upper = name.upper()
+        if not upper.startswith(ENV_PREFIX) or upper.startswith(RESERVED_ENV_PREFIXES):
+            return False
+        return upper[len(ENV_PREFIX) :].lower() not in cls.model_fields
