@@ -75,6 +75,8 @@ warn_required_dynamic_aliases = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Repo root on sys.path so the top-level fake_provider package (not in the wheel) is importable.
+pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = ["--strict-markers"]
